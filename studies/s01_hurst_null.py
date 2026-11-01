@@ -22,12 +22,12 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from fou_eq import __version__  # noqa: E402
-from fou_eq.data import load_yahoo_closes, synthetic_closes  # noqa: E402
-from fou_eq.hurst import (HURST_VERSION, ar1_fit, arma11_fit, fou_moments, hurst_cof,  # noqa: E402
+from equity_trading import __version__  # noqa: E402
+from equity_trading.data import load_yahoo_closes, synthetic_closes  # noqa: E402
+from equity_trading.hurst import (HURST_VERSION, ar1_fit, arma11_fit, fou_moments, hurst_cof,  # noqa: E402
                           noise_sd, simulate_arma11, simulate_ou_noise)
-from fou_eq.spreads import SPREADS_VERSION, deseasonalise, ols_spread  # noqa: E402
-from fou_eq.universe import UNIVERSE_01  # noqa: E402
+from equity_trading.spreads import SPREADS_VERSION, deseasonalise, ols_spread  # noqa: E402
+from equity_trading.universe import UNIVERSE_01  # noqa: E402
 
 # ---- fixed design (pre-registered) ----
 INTERVALS = ["30m", "15m"]          # 30m primary, 15m secondary

@@ -7,10 +7,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from fou_eq.data import regular_session, synthetic_closes  # noqa: E402
-from fou_eq.hurst import (ar1_fit, arma11_fit, fbm, hurst_cof, noise_sd,  # noqa: E402
+from equity_trading.data import regular_session, synthetic_closes  # noqa: E402
+from equity_trading.hurst import (ar1_fit, arma11_fit, fbm, hurst_cof, noise_sd,  # noqa: E402
                           simulate_arma11, simulate_ou_noise)
-from fou_eq.spreads import bar_slot, deseasonalise, ols_spread  # noqa: E402
+from equity_trading.spreads import bar_slot, deseasonalise, ols_spread  # noqa: E402
 
 
 @pytest.mark.parametrize("h", [0.3, 0.5, 0.7])

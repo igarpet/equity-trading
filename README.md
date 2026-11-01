@@ -6,7 +6,7 @@ Research rebuild of *Fractional Ornstein-Uhlenbeck Statistical Arbitrage with Sy
 
 - Each study has a pre-registration (`studies/SNN_README.md`). Its gates are written before results exist and are not changed afterwards.
 - Statistical, economic-after-costs and prospective verdicts are reported separately.
-- Reusable logic lives in `src/fou_eq/`. Study scripts import it.
+- Reusable logic lives in `src/equity_trading/`. Study scripts import it.
 - Every study writes compact CSV/JSON results plus a manifest to `results/sNN/`.
 - Raw data stays out of git. Set `EQUITY_TRADING_DIR`, or the default `./data/` is used.
 

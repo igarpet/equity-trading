@@ -20,7 +20,7 @@ S01 asks whether real spreads sit **below what an OU process with measurement no
 
 ## Design (fixed)
 
-1. **Universe** (`fou_eq.universe.UNIVERSE_01`): 4 sectors × 10 liquid S&P 500 names (tech, banks, energy, utilities). All 45 within-sector pairs per sector, 180 in total. Orientation is alphabetical, as in the thesis.
+1. **Universe** (`equity_trading.universe.UNIVERSE_01`): 4 sectors × 10 liquid S&P 500 names (tech, banks, energy, utilities). All 45 within-sector pairs per sector, 180 in total. Orientation is alphabetical, as in the thesis.
 2. **Spread:** $X_t = \log P_y - \alpha - \beta \log P_x$, with OLS fitted on the full window. This is descriptive, not a trading test.
 3. **Deseasonalisation:** divide each increment by the s.d. of increments in the same intraday slot, then re-cumulate. The first bar of each day, which carries the overnight gap, is its own slot.
 4. **Estimate:** $\hat H$ by the change-of-frequency estimator, on the deseasonalised spread.
