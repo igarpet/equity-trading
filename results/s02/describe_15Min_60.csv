@@ -1,0 +1,5 @@
+group,pair_windows,pass_rate,oos_stat_rate_passers,oos_stat_rate_others,band_hold_passers,band_hold_others,median_drift_sd_passers,median_drift_sd_others,median_half_life_bars_passers,crossings_per_day_passers
+cross,43200,0.0527,0.0742,0.0628,0.6143,0.6600,1.3780,1.3766,45.7765,0.3000
+etf,2880,0.0726,0.0526,0.0689,0.6197,0.6613,1.3473,1.3696,41.9336,0.3500
+etf_cross,8640,0.0554,0.0752,0.0620,0.6246,0.6634,1.4045,1.3530,46.0481,0.3114
+sector,12960,0.0745,0.0994,0.0665,0.6164,0.6692,1.4444,1.3207,41.5683,0.3000
