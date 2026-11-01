@@ -1,0 +1,48 @@
+{
+  "verdict": "NO_EVIDENCE",
+  "pairs": 180,
+  "share_reject_low": 0.0,
+  "share_reject_high": 0.011111111111111112,
+  "median_dh": 0.007619093194265819,
+  "median_h_raw": 0.48639489193623753,
+  "median_h_des": 0.5014140441990945,
+  "median_hnull_noise": 0.49678780292112723,
+  "median_hnull_clean": 0.4996253591179866,
+  "share_reject_low_clean_null": 0.07222222222222222,
+  "share_valid_window": 1.0,
+  "median_half_life_bars": 81.26627563898748,
+  "valid_window_only": {
+    "pairs": 180,
+    "share_reject_low": 0.0,
+    "median_dh": 0.007619093194265819
+  },
+  "eg_p05_only": {
+    "pairs": 6,
+    "share_reject_low": 0.0,
+    "median_dh": 0.002194121114662051
+  },
+  "by_sector": {
+    "banks": {
+      "pairs": 45,
+      "share_reject_low": 0.0,
+      "median_dh": 0.006858606781990018
+    },
+    "energy": {
+      "pairs": 45,
+      "share_reject_low": 0.0,
+      "median_dh": 0.00952190774853301
+    },
+    "tech": {
+      "pairs": 45,
+      "share_reject_low": 0.0,
+      "median_dh": 0.020693136662757627
+    },
+    "utilities": {
+      "pairs": 45,
+      "share_reject_low": 0.0,
+      "median_dh": 0.0029660097902199367
+    }
+  },
+  "interval": "30m",
+  "primary": true
+}
