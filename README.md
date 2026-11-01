@@ -16,7 +16,8 @@ Research rebuild of *Fractional Ornstein-Uhlenbeck Statistical Arbitrage with Sy
 | ID | Question | Data | Status |
 |---|---|---|---|
 | S01 | Is intraday H < 0.5 real, or estimator bias? | Yahoo, 60 days, 30m/15m | Run 9ab45bb: `NO_EVIDENCE`, uninformative (no power) |
-| S02 | Are same-sector / stock-ETF pairs cointegrated beyond a null, and does it persist? | Alpaca SIP 2020–2025, 30m/15m | Pre-registered; notebook ready, awaiting run |
+| S02 | Are same-sector / stock-ETF pairs cointegrated beyond a null, and does it persist? | Alpaca SIP 2020–2025, 30m/15m | Run 26c6437: `NO_COINTEGRATION_SIGNAL` (sector and ETF) |
+| S03 | Thesis pair discovery (S&P 500, top-10 corr, I(1), EG 1%) on intraday bars + Johansen, rolling, GICS / correlation clustering | Alpaca SIP 2020–2025, 30m/15m | Pre-registered; notebook ready, awaiting run |
 
 ## Setup
 
