@@ -101,3 +101,37 @@ def test_g2_null_vs_null_has_no_lift():
     r = g2(res, "cross", "etf_cross", n_boot=300)
     assert not r["pass"] and abs(r["diff"]) < 0.08
     assert g2(res, "sector", "cross", n_boot=300)["pass"]
+
+
+def test_parallel_download_writes_all_and_resumes(tmp_path, monkeypatch):
+    import time as _t
+    monkeypatch.setenv("EQUITY_TRADING_DIR", str(tmp_path))
+    calls = []
+
+    def fake(chunk, tf, start, end, session=None, **kw):
+        calls.append(tuple(chunk)); _t.sleep(0.2)
+        return {s: pd.DataFrame({"t": pd.to_datetime(["2024-01-02T15:00Z"], utc=True), "c": [1.0]}) for s in chunk}
+
+    monkeypatch.setattr(alpaca, "fetch_bars", fake)
+    syms = [f"S{i:02d}" for i in range(40)]
+    t0 = _t.time()
+    alpaca.download_years(syms, "30Min", [2023, 2024], batch=5, workers=8, verbose=False)
+    assert _t.time() - t0 < 1.0                      # 16 batches x 0.2 s, in parallel
+    assert len(list((tmp_path / "Alpaca" / "bars" / "30Min").rglob("*.parquet"))) == 80
+    assert not list(tmp_path.rglob("*.tmp"))
+    n = len(calls)
+    alpaca.download_years(syms, "30Min", [2023, 2024], batch=5, workers=8, verbose=False)
+    assert len(calls) == n                           # everything cached: no new requests
+
+
+def test_rate_limiter_spaces_requests_across_threads():
+    import threading
+    import time as _t
+    lim = alpaca._RateLimiter(600)                   # 0.1 s gap
+    stamps = []
+    def go():
+        lim.wait(); stamps.append(_t.monotonic())
+    th = [threading.Thread(target=go) for _ in range(5)]
+    [t.start() for t in th]; [t.join() for t in th]
+    d = np.diff(sorted(stamps))
+    assert d.min() > 0.09

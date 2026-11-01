@@ -20,7 +20,7 @@ import pandas as pd
 
 from .data import NY, vendor_dir
 
-ALPACA_VERSION = "0.1.1"
+ALPACA_VERSION = "0.2.0"
 BASE_URL = "https://data.alpaca.markets/v2/stocks/bars"
 MAX_CALLS_PER_MIN = 180  # free plan limit is 200
 
@@ -38,15 +38,21 @@ def _credentials() -> dict:
 
 
 class _RateLimiter:
+    """Thread-safe: spaces request starts at least 60/per_min seconds apart across all threads."""
+
     def __init__(self, per_min: int):
+        import threading
         self.gap = 60.0 / per_min
-        self.last = 0.0
+        self.next = 0.0
+        self.lock = threading.Lock()
 
     def wait(self):
-        dt = time.monotonic() - self.last
-        if dt < self.gap:
-            time.sleep(self.gap - dt)
-        self.last = time.monotonic()
+        with self.lock:
+            now = time.monotonic()
+            start = max(now, self.next)
+            self.next = start + self.gap
+        if start > now:
+            time.sleep(start - now)
 
 
 _limiter = _RateLimiter(MAX_CALLS_PER_MIN)
@@ -100,25 +106,49 @@ def _cache_dir(timeframe: str) -> "os.PathLike":
     return d
 
 
+def _download_chunk(chunk: list[str], timeframe: str, y: int) -> int:
+    import requests
+    got = fetch_bars(chunk, timeframe, f"{y}-01-01", f"{y + 1}-01-01", session=requests.Session())
+    n = 0
+    for s in chunk:
+        p = _cache_dir(timeframe) / s
+        p.mkdir(parents=True, exist_ok=True)
+        df = got.get(s, pd.DataFrame(columns=["t"]))
+        tmp = p / f"{y}.parquet.tmp"
+        df.to_parquet(tmp, index=False)
+        os.replace(tmp, p / f"{y}.parquet")  # atomic: a file exists only once fully written
+        n += len(df)
+    return n
+
+
 def download_years(symbols: list[str], timeframe: str, years: list[int], batch: int = 10,
-                   verbose: bool = True) -> None:
-    """Fill the cache for complete past years. Skips symbol-years already cached."""
+                   workers: int = 8, verbose: bool = True) -> None:
+    """Fill the cache for complete past years with `workers` parallel requests (shared rate
+    limit, MAX_CALLS_PER_MIN). Skips symbol-years already cached; safe to interrupt and re-run."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     this_year = date.today().year
+    bad = [y for y in years if y >= this_year]
+    if bad:
+        raise ValueError(f"{bad} not complete past years; download_years only caches complete years.")
+    tasks = []
     for y in years:
-        if y >= this_year:
-            raise ValueError(f"{y} is not a complete past year; download_years only caches complete years.")
         todo = [s for s in symbols if not (_cache_dir(timeframe) / s / f"{y}.parquet").exists()]
-        for i in range(0, len(todo), batch):
-            chunk = todo[i:i + batch]
-            t0 = time.time()
-            got = fetch_bars(chunk, timeframe, f"{y}-01-01", f"{y + 1}-01-01")
-            for s in chunk:
-                p = _cache_dir(timeframe) / s
-                p.mkdir(parents=True, exist_ok=True)
-                got.get(s, pd.DataFrame(columns=["t"])).to_parquet(p / f"{y}.parquet", index=False)
-            if verbose:
-                n = sum(len(got.get(s, [])) for s in chunk)
-                print(f"{timeframe} {y} {chunk[0]}..{chunk[-1]}: {n:,} bars in {time.time() - t0:.0f}s")
+        tasks += [(todo[i:i + batch], y) for i in range(0, len(todo), batch)]
+    if verbose:
+        print(f"{timeframe}: {len(tasks)} batches to download ({sum(len(c) for c, _ in tasks)} symbol-years), "
+              f"{workers} parallel requests")
+    if not tasks:
+        return
+    t0, done, bars = time.time(), 0, 0
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futs = [ex.submit(_download_chunk, c, timeframe, y) for c, y in tasks]
+        for f in as_completed(futs):
+            bars += f.result()
+            done += 1
+            if verbose and (done % 10 == 0 or done == len(tasks)):
+                el = time.time() - t0
+                print(f"  {done}/{len(tasks)} batches, {bars:,} bars, {el / 60:.1f} min elapsed, "
+                      f"~{el / done * (len(tasks) - done) / 60:.0f} min left", flush=True)
 
 
 def load_bars(symbol: str, timeframe: str, years: list[int]) -> pd.DataFrame:
