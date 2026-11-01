@@ -6,3 +6,6 @@ UNIVERSE_01 = {
     "energy": ["XOM", "CVX", "COP", "EOG", "SLB", "PSX", "MPC", "VLO", "OXY", "HAL"],
     "utilities": ["NEE", "DUK", "SO", "D", "AEP", "EXC", "SRE", "XEL", "ED", "PEG"],
 }
+
+# Select Sector SPDR ETF for each UNIVERSE_01 sector (used as the factor leg).
+SECTOR_ETF_01 = {"tech": "XLK", "banks": "XLF", "energy": "XLE", "utilities": "XLU"}
