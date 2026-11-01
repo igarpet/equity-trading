@@ -8,7 +8,7 @@ Research rebuild of *Fractional Ornstein-Uhlenbeck Statistical Arbitrage with Sy
 - Statistical, economic-after-costs and prospective verdicts are reported separately.
 - Reusable logic lives in `src/fou_eq/`. Study scripts import it.
 - Every study writes compact CSV/JSON results plus a manifest to `results/sNN/`.
-- Raw data stays out of git. Set `FOU_DATA_DIR`, or the default `./data/` is used.
+- Raw data stays out of git. Set `EQUITY_TRADING_DIR`, or the default `./data/` is used.
 
 ## Studies
 

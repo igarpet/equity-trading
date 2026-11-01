@@ -17,7 +17,13 @@ NY = "America/New_York"
 
 
 def data_dir() -> Path:
-    d = Path(os.environ.get("FOU_DATA_DIR", Path.cwd() / "data"))
+    """Data root from EQUITY_TRADING_DIR (read from .env if present), else ./data."""
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass
+    d = Path(os.environ.get("EQUITY_TRADING_DIR", Path.cwd() / "data"))
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -26,7 +32,7 @@ def load_yahoo_closes(tickers: list[str], interval: str = "30m", period: str = "
                       refresh: bool = False) -> pd.DataFrame:
     """Regular-session close prices, index in New York time, one column per ticker.
 
-    Cached to <FOU_DATA_DIR>/raw/yahoo_<interval>_<period>.parquet. Prices are
+    Cached to <EQUITY_TRADING_DIR>/raw/yahoo_<interval>_<period>.parquet. Prices are
     split/dividend adjusted (auto_adjust=True).
     """
     raw = data_dir() / "raw"
