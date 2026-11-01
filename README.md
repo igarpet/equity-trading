@@ -8,7 +8,8 @@ Research rebuild of *Fractional Ornstein-Uhlenbeck Statistical Arbitrage with Sy
 - Statistical, economic-after-costs and prospective verdicts are reported separately.
 - Reusable logic lives in `src/equity_trading/`. Study scripts import it.
 - Every study writes compact CSV/JSON results plus a manifest to `results/sNN/`.
-- Raw data stays out of git. Set `EQUITY_TRADING_DIR`, or the default `./data/` is used.
+- Data stays out of git. `EQUITY_TRADING_DIR` is the shared market-data folder (alongside `Deribit/` and `Binance/`):
+  vendor data goes to `Alpaca/` and `Yahoo/`, large derived outputs to `EquityTrading/`.
 
 ## Studies
 

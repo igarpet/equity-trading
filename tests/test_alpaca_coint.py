@@ -49,12 +49,12 @@ def test_fetch_bars_paginates(monkeypatch):
 
 def test_regular_session_panel(tmp_path, monkeypatch):
     monkeypatch.setenv("EQUITY_TRADING_DIR", str(tmp_path))
-    d = tmp_path / "alpaca" / "bars" / "30Min" / "AAA"
+    d = tmp_path / "Alpaca" / "bars" / "30Min" / "AAA"
     d.mkdir(parents=True)
     t = pd.to_datetime(["2024-01-02T13:30Z", "2024-01-02T14:30Z", "2024-01-02T15:00Z",
                         "2024-01-02T16:00Z", "2024-01-02T21:00Z"], utc=True)  # 08:30, 09:30, 10:00, 11:00, 16:00 NY
     pd.DataFrame({"t": t, "c": [1.0, 2.0, 3.0, 5.0, 9.0]}).to_parquet(d / "2024.parquet", index=False)
-    e = tmp_path / "alpaca" / "bars" / "30Min" / "BBB"
+    e = tmp_path / "Alpaca" / "bars" / "30Min" / "BBB"
     e.mkdir(parents=True)
     pd.DataFrame({"t": t[[1, 2, 3]], "c": [1.0, 1.0, 1.0]}).to_parquet(e / "2024.parquet", index=False)
     p = alpaca.regular_session_panel(["AAA", "BBB"], "30Min", [2024])

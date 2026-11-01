@@ -4,7 +4,7 @@ Credentials come from .env (APCA_API_KEY_ID, APCA_API_SECRET_KEY). On the free
 plan SIP queries must end at least 15 minutes in the past; this module only
 requests whole past calendar years or explicit past end dates.
 
-Cache layout: <EQUITY_TRADING_DIR>/alpaca/bars/<timeframe>/<SYMBOL>/<YEAR>.parquet
+Cache layout: <EQUITY_TRADING_DIR>/Alpaca/bars/<timeframe>/<SYMBOL>/<YEAR>.parquet
 (all bars Alpaca returns, extended hours included, UTC bar-start timestamps).
 A year file is written only after the full year was downloaded, so an
 interrupted run resumes cleanly. The current year is never cached as complete.
@@ -18,9 +18,9 @@ from datetime import date
 import numpy as np
 import pandas as pd
 
-from .data import NY, data_dir
+from .data import NY, vendor_dir
 
-ALPACA_VERSION = "0.1.0"
+ALPACA_VERSION = "0.1.1"
 BASE_URL = "https://data.alpaca.markets/v2/stocks/bars"
 MAX_CALLS_PER_MIN = 180  # free plan limit is 200
 
@@ -95,7 +95,7 @@ def fetch_bars(symbols: list[str], timeframe: str, start: str, end: str,
 
 
 def _cache_dir(timeframe: str) -> "os.PathLike":
-    d = data_dir() / "alpaca" / "bars" / timeframe
+    d = vendor_dir("Alpaca") / "bars" / timeframe
     d.mkdir(parents=True, exist_ok=True)
     return d
 

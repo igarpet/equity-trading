@@ -17,7 +17,12 @@ NY = "America/New_York"
 
 
 def data_dir() -> Path:
-    """Data root from EQUITY_TRADING_DIR (read from .env if present), else ./data."""
+    """Market-data root from EQUITY_TRADING_DIR (read from .env if present), else ./data.
+
+    This is the shared market-data folder (the one that also holds Deribit/ and Binance/).
+    Each vendor gets its own subfolder (see vendor_dir); this project's derived outputs go
+    to work_dir().
+    """
     try:
         from dotenv import load_dotenv
         load_dotenv()
@@ -28,15 +33,28 @@ def data_dir() -> Path:
     return d
 
 
+def vendor_dir(vendor: str) -> Path:
+    """<EQUITY_TRADING_DIR>/<Vendor>, e.g. Alpaca, Yahoo."""
+    d = data_dir() / vendor
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def work_dir() -> Path:
+    """<EQUITY_TRADING_DIR>/EquityTrading: large derived outputs of this project (not vendor data)."""
+    d = data_dir() / "EquityTrading"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def load_yahoo_closes(tickers: list[str], interval: str = "30m", period: str = "60d",
                       refresh: bool = False) -> pd.DataFrame:
     """Regular-session close prices, index in New York time, one column per ticker.
 
-    Cached to <EQUITY_TRADING_DIR>/raw/yahoo_<interval>_<period>.parquet. Prices are
+    Cached to <EQUITY_TRADING_DIR>/Yahoo/yahoo_<interval>_<period>.parquet. Prices are
     split/dividend adjusted (auto_adjust=True).
     """
-    raw = data_dir() / "raw"
-    raw.mkdir(parents=True, exist_ok=True)
+    raw = vendor_dir("Yahoo")
     path = raw / f"yahoo_{interval}_{period}.parquet"
     if path.exists() and not refresh:
         df = pd.read_parquet(path)

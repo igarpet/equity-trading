@@ -85,11 +85,11 @@ python -m pytest -q
 jupyter nbconvert --to notebook --execute --inplace studies/S02_cointegration_base_rate.ipynb
 ```
 
-The first run downloads about 6 years × 44 symbols × 2 bar sizes into `<EQUITY_TRADING_DIR>/alpaca/` (around 10–20 minutes). Later runs use the cache. Set `S02_SYNTHETIC=1` for an offline run on synthetic data.
+The first run downloads about 6 years × 44 symbols × 2 bar sizes into `<EQUITY_TRADING_DIR>/Alpaca/` (around 10–20 minutes). Later runs use the cache. Set `S02_SYNTHETIC=1` for an offline run on synthetic data.
 
 **Outputs:**
 - `results/s02/summary.json`
 - `results/s02/describe_*.csv`
 - `results/s02/pass_rate_over_time_*.csv`
 
-Full pair-window rows go to `<EQUITY_TRADING_DIR>/results/s02/`, outside git. Commit the executed notebook and `results/s02/`.
+Full pair-window rows go to `<EQUITY_TRADING_DIR>/EquityTrading/results/s02/`, outside git. Commit the executed notebook and `results/s02/`.
