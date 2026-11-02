@@ -1,5 +1,5 @@
 set,EG only,JO only,both,neither
-corr,4,3,2,452
-gics,0,0,1,47
-cluster,2,2,2,68
-null,5,6,4,1474
+corr,37,58,64,3641
+gics,10,10,17,1235
+cluster,20,26,21,1679
+null,23,37,20,2920

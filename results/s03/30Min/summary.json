@@ -31,29 +31,29 @@
   },
   "formation": [
     "2020-01-02 09:30:00-05:00",
-    "2024-03-13 12:30:00-04:00"
+    "2024-03-12 12:00:00-04:00"
   ],
   "oos": [
-    "2024-03-13 13:00:00-04:00",
+    "2024-03-12 12:30:00-04:00",
     "2025-12-31 15:30:00-05:00"
   ],
-  "assets_retained": 63,
+  "assets_retained": 473,
   "candidates": {
-    "corr": 461,
-    "gics": 48,
-    "cluster": 74,
-    "null": 1489
+    "corr": 3800,
+    "gics": 1272,
+    "cluster": 1746,
+    "null": 3000
   },
-  "primary_verdict": "SELECTS_BUT_NOT_PERSISTENT",
+  "primary_verdict": "NO_EXCESS",
   "verdicts": {
     "EG": {
-      "cluster": "SELECTS_BUT_NOT_PERSISTENT",
-      "corr": "SELECTS_BUT_NOT_PERSISTENT",
-      "gics": "SELECTS_BUT_NOT_PERSISTENT"
+      "cluster": "NO_EXCESS",
+      "corr": "NO_EXCESS",
+      "gics": "NO_EXCESS"
     },
     "EG+JO": {
-      "cluster": "SELECTS_BUT_NOT_PERSISTENT",
-      "corr": "NO_EXCESS",
+      "cluster": "NO_EXCESS",
+      "corr": "SELECTS_BUT_NOT_PERSISTENT",
       "gics": "SELECTS_BUT_NOT_PERSISTENT"
     },
     "EG+ROLL": {
@@ -62,20 +62,20 @@
       "gics": "SELECTS_BUT_NOT_PERSISTENT"
     },
     "JO": {
-      "cluster": "SELECTS_BUT_NOT_PERSISTENT",
+      "cluster": "NO_EXCESS",
       "corr": "NO_EXCESS",
-      "gics": "SELECTS_BUT_NOT_PERSISTENT"
+      "gics": "NO_EXCESS"
     }
   },
   "thesis_98_comparison": {
     "thesis_pairs": 98,
-    "both_legs_retained": 1,
-    "in_intraday_top10_candidates": 1,
-    "selected_intraday_EG": 0
+    "both_legs_retained": 96,
+    "in_intraday_top10_candidates": 68,
+    "selected_intraday_EG": 4
   },
   "versions": {
     "package": "0.1.0",
-    "alpaca": "0.2.0",
+    "alpaca": "0.3.0",
     "pairs": "0.1.1"
   }
 }

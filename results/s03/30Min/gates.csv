@@ -1,13 +1,13 @@
 set,rule,selected,null_selected,null_reference,ratio_vs_null,band_hold,band_hold_null,band_hold_lift,band_hold_lift_lo,reversion_rate,reversion_rate_null,reversion_rate_lift,reversion_rate_lift_lo,drift_sd,drift_sd_null,G1,G2,verdict
-corr,EG,6,9,all_null_pairs (too few null pairs selected),2.1533,0.4006,0.5744,-0.1738,-0.3741,0.0000,0.1847,-0.1847,-0.2018,3.6075,1.8793,True,False,SELECTS_BUT_NOT_PERSISTENT
-corr,JO,5,10,null_selected_same_rule,1.6150,0.3459,0.5069,-0.1610,-0.4760,0.1000,0.1600,-0.0600,-0.2700,4.9297,2.6570,False,False,NO_EXCESS
-corr,EG+JO,2,4,all_null_pairs (too few null pairs selected),1.6150,0.5188,0.5744,-0.0556,-0.5021,0.0000,0.1847,-0.1847,-0.2030,4.4483,1.8793,False,False,NO_EXCESS
-corr,EG+ROLL,1,0,all_null_pairs (too few null pairs selected),inf,0.9527,0.5744,0.3784,0.3603,0.0000,0.1847,-0.1847,-0.2027,0.5402,1.8793,True,False,SELECTS_BUT_NOT_PERSISTENT
-gics,EG,1,9,all_null_pairs (too few null pairs selected),3.4468,0.9527,0.5744,0.3784,0.3603,0.0000,0.1847,-0.1847,-0.2027,0.5402,1.8793,True,False,SELECTS_BUT_NOT_PERSISTENT
-gics,JO,1,10,null_selected_same_rule,3.1021,0.9527,0.5069,0.4458,0.2634,0.0000,0.1600,-0.1600,-0.3200,0.5402,2.6570,True,False,SELECTS_BUT_NOT_PERSISTENT
-gics,EG+JO,1,4,all_null_pairs (too few null pairs selected),7.7552,0.9527,0.5744,0.3784,0.3603,0.0000,0.1847,-0.1847,-0.2027,0.5402,1.8793,True,False,SELECTS_BUT_NOT_PERSISTENT
-gics,EG+ROLL,1,0,all_null_pairs (too few null pairs selected),inf,0.9527,0.5744,0.3784,0.3603,0.0000,0.1847,-0.1847,-0.2027,0.5402,1.8793,True,False,SELECTS_BUT_NOT_PERSISTENT
-cluster,EG,4,9,all_null_pairs (too few null pairs selected),8.9429,0.4240,0.5744,-0.1503,-0.4580,0.0000,0.1847,-0.1847,-0.2021,3.9813,1.8793,True,False,SELECTS_BUT_NOT_PERSISTENT
-cluster,JO,4,10,null_selected_same_rule,8.0486,0.3150,0.5069,-0.1919,-0.5333,0.0000,0.1600,-0.1600,-0.3300,5.6091,2.6570,True,False,SELECTS_BUT_NOT_PERSISTENT
-cluster,EG+JO,2,4,all_null_pairs (too few null pairs selected),10.0608,0.5188,0.5744,-0.0556,-0.5021,0.0000,0.1847,-0.1847,-0.2030,4.4483,1.8793,True,False,SELECTS_BUT_NOT_PERSISTENT
-cluster,EG+ROLL,1,0,all_null_pairs (too few null pairs selected),inf,0.9527,0.5744,0.3784,0.3603,0.0000,0.1847,-0.1847,-0.2027,0.5402,1.8793,True,False,SELECTS_BUT_NOT_PERSISTENT
+corr,EG,101,43,null_selected_same_rule,1.8543,0.5051,0.5041,0.0010,-0.0976,0.2759,0.3112,-0.0353,-0.1555,2.3921,2.1983,False,False,NO_EXCESS
+corr,JO,122,57,null_selected_same_rule,1.6898,0.4814,0.5334,-0.0520,-0.1493,0.2627,0.2762,-0.0135,-0.1171,2.5337,2.1543,False,False,NO_EXCESS
+corr,EG+JO,64,20,null_selected_same_rule,2.5263,0.5066,0.5121,-0.0056,-0.1559,0.2930,0.3375,-0.0445,-0.2273,2.4168,2.0714,True,False,SELECTS_BUT_NOT_PERSISTENT
+corr,EG+ROLL,1,0,all_null_pairs (too few null pairs selected),inf,0.9538,0.6159,0.3378,0.3256,0.0000,0.2271,-0.2271,-0.2400,0.5368,1.7755,True,False,SELECTS_BUT_NOT_PERSISTENT
+gics,EG,27,43,null_selected_same_rule,1.4809,0.5264,0.5041,0.0224,-0.1126,0.3198,0.3112,0.0085,-0.1441,2.3821,2.1983,False,False,NO_EXCESS
+gics,JO,27,57,null_selected_same_rule,1.1172,0.5660,0.5334,0.0326,-0.1080,0.3185,0.2762,0.0423,-0.1197,1.8698,2.1543,False,False,NO_EXCESS
+gics,EG+JO,17,20,null_selected_same_rule,2.0047,0.5755,0.5121,0.0634,-0.1140,0.3412,0.3375,0.0037,-0.2177,2.0265,2.0714,True,False,SELECTS_BUT_NOT_PERSISTENT
+gics,EG+ROLL,1,0,all_null_pairs (too few null pairs selected),inf,0.9538,0.6159,0.3378,0.3256,0.0000,0.2271,-0.2271,-0.2400,0.5368,1.7755,True,False,SELECTS_BUT_NOT_PERSISTENT
+cluster,EG,41,43,null_selected_same_rule,1.6383,0.5028,0.5041,-0.0012,-0.1223,0.2940,0.3112,-0.0172,-0.1576,2.5726,2.1983,False,False,NO_EXCESS
+cluster,JO,47,57,null_selected_same_rule,1.4168,0.4843,0.5334,-0.0492,-0.1716,0.2384,0.2762,-0.0378,-0.1604,2.7562,2.1543,False,False,NO_EXCESS
+cluster,EG+JO,21,20,null_selected_same_rule,1.8041,0.5415,0.5121,0.0294,-0.1670,0.3317,0.3375,-0.0058,-0.2193,2.3009,2.0714,False,False,NO_EXCESS
+cluster,EG+ROLL,1,0,all_null_pairs (too few null pairs selected),inf,0.9538,0.6159,0.3378,0.3256,0.0000,0.2271,-0.2271,-0.2400,0.5368,1.7755,True,False,SELECTS_BUT_NOT_PERSISTENT
