@@ -1,0 +1,81 @@
+{
+  "study": "S03",
+  "timeframe": "30Min",
+  "synthetic": false,
+  "years": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "config": {
+    "train_fraction": 0.7,
+    "max_missing": 0.05,
+    "top_n": 10,
+    "coint_alpha": 0.01,
+    "integration_alpha": 0.05,
+    "johansen_max_lags": 10,
+    "johansen_det_order": 0,
+    "roll_window_sessions": 63,
+    "roll_step_sessions": 21,
+    "roll_alpha": 0.05,
+    "roll_stable_share": 0.5,
+    "max_cluster_size": 40,
+    "n_null": 3000,
+    "seed": 42,
+    "entry_z": 1.5,
+    "stop_z": 3.0,
+    "intraday_ffill_bars": 2
+  },
+  "formation": [
+    "2020-01-02 09:30:00-05:00",
+    "2024-03-13 12:30:00-04:00"
+  ],
+  "oos": [
+    "2024-03-13 13:00:00-04:00",
+    "2025-12-31 15:30:00-05:00"
+  ],
+  "assets_retained": 63,
+  "candidates": {
+    "corr": 461,
+    "gics": 48,
+    "cluster": 74,
+    "null": 1489
+  },
+  "primary_verdict": "SELECTS_BUT_NOT_PERSISTENT",
+  "verdicts": {
+    "EG": {
+      "cluster": "SELECTS_BUT_NOT_PERSISTENT",
+      "corr": "SELECTS_BUT_NOT_PERSISTENT",
+      "gics": "SELECTS_BUT_NOT_PERSISTENT"
+    },
+    "EG+JO": {
+      "cluster": "SELECTS_BUT_NOT_PERSISTENT",
+      "corr": "NO_EXCESS",
+      "gics": "SELECTS_BUT_NOT_PERSISTENT"
+    },
+    "EG+ROLL": {
+      "cluster": "SELECTS_BUT_NOT_PERSISTENT",
+      "corr": "SELECTS_BUT_NOT_PERSISTENT",
+      "gics": "SELECTS_BUT_NOT_PERSISTENT"
+    },
+    "JO": {
+      "cluster": "SELECTS_BUT_NOT_PERSISTENT",
+      "corr": "NO_EXCESS",
+      "gics": "SELECTS_BUT_NOT_PERSISTENT"
+    }
+  },
+  "thesis_98_comparison": {
+    "thesis_pairs": 98,
+    "both_legs_retained": 1,
+    "in_intraday_top10_candidates": 1,
+    "selected_intraday_EG": 0
+  },
+  "versions": {
+    "package": "0.1.0",
+    "alpaca": "0.2.0",
+    "pairs": "0.1.1"
+  }
+}
