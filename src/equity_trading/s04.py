@@ -29,7 +29,7 @@ import pandas as pd
 
 from .coint import ar1_half_life, eg_test, ols_ab
 
-S04_VERSION = "0.1.0"
+S04_VERSION = "0.1.1"
 NY = "America/New_York"
 
 
@@ -141,7 +141,9 @@ def bar_grid(years: list[int], minutes: int) -> pd.DatetimeIndex:
     from .alpaca import session_schedule
     sc = session_schedule(years)
     stamps = [pd.date_range(op, cl, freq=f"{minutes}min", inclusive="left") for op, cl in zip(sc.market_open, sc.market_close)]
-    return pd.DatetimeIndex(np.concatenate([s.tz_convert(NY).asi8 for s in stamps])).tz_localize("UTC").tz_convert(NY)
+    # concatenate as datetimes, never as raw integers: pandas >= 3 may store microseconds, not nanoseconds
+    grid = stamps[0].append(stamps[1:]) if stamps else pd.DatetimeIndex([], tz="UTC")
+    return pd.DatetimeIndex(grid).tz_convert(NY)
 
 
 def load_panel(symbols: list[str], timeframe: str, years: list[int], ffill_bars: int = 2) -> Panel:
@@ -166,6 +168,9 @@ def load_panel(symbols: list[str], timeframe: str, years: list[int], ffill_bars:
             out[k][pos[m], j] = b[k].to_numpy(dtype=float)[m]
         kept.append(j)
     kept = np.array(kept, dtype=int)
+    filled = np.isfinite(out["c"][:, kept]).mean() if len(kept) else 0.0
+    if filled < 0.5:
+        raise RuntimeError(f"load_panel: only {filled:.1%} of grid cells have a close; bar timestamps do not match the grid.")
     return _assemble(grid, [symbols[j] for j in kept], *(out[k][:, kept] for k in "ohlc"), ffill_bars=ffill_bars)
 
 

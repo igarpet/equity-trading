@@ -127,3 +127,27 @@ def test_gates_logic():
     good = {"total_return": {"p_upper": 0.01}, "sharpe": {"p_upper": 0.02}}
     g = s04.gates(boot, good, good, {"total_return": 0.1, "sharpe": 0.5}, {"total_return": 0.2})
     assert not g["G1_bootstrap"] and g["G2_vs_random_pairs"] and g["verdict"] == "NO_EDGE"
+
+
+def test_bar_grid_matches_exchange_calendar():
+    g = s04.bar_grid([2024], 15)
+    days = pd.Series(g.date)
+    assert days.nunique() == 252                                # NYSE sessions in 2024
+    assert g[0].year == 2024 and (g[0].hour, g[0].minute) == (9, 30)
+    per_day = days.value_counts()
+    assert per_day.max() == 26 and per_day.min() == 14          # early closes end at 13:00
+    assert g.is_monotonic_increasing and g.is_unique
+
+
+def test_load_panel_places_bars_on_grid(monkeypatch):
+    g = s04.bar_grid([2024], 15)
+    bars = pd.DataFrame({"t": g.tz_convert("UTC")[:520], "o": 100.0, "h": 101.0, "l": 99.0, "c": 100.5,
+                         "v": 1, "n": 1, "vw": 100.0})
+    monkeypatch.setattr("equity_trading.alpaca.load_bars", lambda s, tf, years: bars)
+    with pytest.raises(RuntimeError):                            # 520 of 6,516 bars filled: rejected
+        s04.load_panel(["AAA"], "15Min", [2024])
+    full = bars.iloc[:0].reindex(range(len(g)))
+    full["t"] = g.tz_convert("UTC"); full[["o", "h", "l", "c"]] = 100.0
+    monkeypatch.setattr("equity_trading.alpaca.load_bars", lambda s, tf, years: full)
+    p = s04.load_panel(["AAA"], "15Min", [2024])
+    assert p.n_days == 252 and np.isfinite(p.c).all()
