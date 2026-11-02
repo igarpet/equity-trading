@@ -18,7 +18,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
-PAIRS_VERSION = "0.1.0"
+PAIRS_VERSION = "0.1.1"
 
 
 # ---------------------------------------------------------------- availability (thesis 01)
@@ -84,16 +84,21 @@ def cluster_pairs(labels: pd.Series, max_cluster_size: int | None = None) -> lis
 
 
 def random_null_pairs(tickers: list[str], exclude: set, n: int, seed: int = 0) -> list[tuple[str, str]]:
-    """Random pairs outside every candidate set: the empirical null for the selection rule."""
-    rng = np.random.default_rng(seed)
+    """Random pairs outside every candidate set: the empirical null for the selection rule.
+
+    Samples without replacement from the pairs that actually exist; if fewer than n are
+    available, returns all of them and warns (never loops forever).
+    """
+    import warnings
     t = sorted(tickers)
-    out = set()
-    while len(out) < n:
-        a, b = rng.choice(len(t), 2, replace=False)
-        p = tuple(sorted((t[a], t[b])))
-        if p not in exclude:
-            out.add(p)
-    return sorted(out)
+    pool = [p for p in itertools.combinations(t, 2) if p not in exclude]
+    if len(pool) < n:
+        warnings.warn(f"only {len(pool)} non-candidate pairs exist among {len(t)} tickers; "
+                      f"null uses all of them instead of {n}")
+        return pool
+    rng = np.random.default_rng(seed)
+    idx = rng.choice(len(pool), n, replace=False)
+    return sorted(pool[i] for i in idx)
 
 
 # ---------------------------------------------------------------- tests (thesis + extensions)

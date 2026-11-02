@@ -79,3 +79,13 @@ def test_rolling_and_oos():
     sel = screen_pairs(tr, [("AAA", "BBB"), ("CCC", "DDD")], roots, johansen=False, n_jobs=1)
     d = oos_diagnostics(tr, te, sel).set_index("pair")
     assert d.loc["AAA-BBB", "band_hold"] > 0.8 and d.loc["AAA-BBB", "episodes"] > 0
+
+
+def test_null_pairs_never_loops_when_pool_is_small():
+    import warnings
+    t = ["A", "B", "C", "D"]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        out = random_null_pairs(t, {("A", "B")}, 3000)
+    assert len(out) == 5 and ("A", "B") not in out and w
+    assert len(random_null_pairs(t, set(), 3, seed=1)) == 3
