@@ -32,7 +32,7 @@ All decisions use data up to the close of decision day *e* and take effect on *e
 | Step | Rule |
 |---|---|
 | Panel | Exchange-calendar 15m grid. Close forward-filled within a session for up to 2 bars. A missing open is filled with the previous close of the same session. No full-sample availability filter: a pair is tested on a day only if both legs have ≥ 95% of bars in the window. |
-| Costs | One-way cost on day *d* = ½ × the Abdi–Ranaldo (2017) spread, from 15m OHLC over sessions *d*−20 … *d*−1, floored at 1 bp. Applied to every fill. No commissions, borrow fees or dividends. Every stock is assumed shortable. |
+| Costs | **Flat 2 bps one way** on every fill (amendment A1 below). Originally ½ × the Abdi–Ranaldo (2017) spread from 15m OHLC over sessions *d*−20 … *d*−1, floored at 1 bp. No commissions, borrow fees or dividends. Every stock is assumed shortable. |
 | Candidates | Every 5 sessions: each stock's top-10 signed correlations of 15m log returns over the trailing 20 sessions, excluding the overnight bar. Orientation is alphabetical *y*. The pool on day *e* is the union of the last 4 refreshes. |
 | Daily test | Half-life from an AR(1) fit on an OLS spread over a 20-session reference window. Engle–Granger with a fixed 1-lag ADF and MacKinnon p-value (N = 2) over the test window. `hl5`: clamp(5 × HL, 5, 60) sessions. `fixed60`: 60 sessions. BH-FDR across each day's batch. |
 | Pass / fail | **Pass:** BH-adjusted p ≤ 1%, β > 0, valid half-life, and the window holds ≥ 5 half-lives. **Fail:** raw p > 10%, β ≤ 0, invalid half-life, or window < 5 half-lives. Anything else is neutral. |
@@ -76,11 +76,20 @@ All decisions use data up to the close of decision day *e* and take effect on *e
 - Tradable-pair count over time, number of spells and their durations.
 - **Calibration:** OU probability of reaching \|z\| = 0.5 before 3 from the entry z (scale-function formula, independent of κ) vs the realized take-profit share, on trades that ended at tp or stop. Trades ended by time, break or end are censored and their share is reported.
 
+## 2a. Amendments
+
+**A1 (2026-11-03, after the first `hl5` run, commit 5bc38f1).** Costs changed from Abdi–Ranaldo to a flat 2 bps one way.
+- **Reason:** on 15m bars the estimator gave a median one-way cost of 35.6 bps (10th percentile 24 bps). That is roughly an order of magnitude above quoted spreads on S&P 500 names; the within-bar range is mostly volatility, not spread.
+- **Effect on that run:** the entry filter blocked almost every signal (1 trade), and placebos were charged about 1.4% per round trip.
+- **Status:** this corrects an implausible input. It was not chosen by comparing performance. The 2× (4 bps) and 0× runs and G4 are unchanged. The Abdi–Ranaldo estimate is still plotted as a diagnostic.
+- **Also from that run:** `hl5` passed raw p ≤ 1% on 2.1% of pair-days, BH on 0.08%, with 125 spells (median 4 sessions) and 1 trade, as the window-power check predicted.
+- **Scope:** both arms are run with A1. Gates and every other rule are unchanged.
+
 ## 3. Known limitations
 
 - **Survivorship:** current-snapshot universe, as in the thesis and S03.
 - **Short side:** shorting is free and unconstrained. This is optimistic.
-- **Costs are an estimate:** a high/low-based spread estimator with no quote data, and no market impact. At 4% gross per pair, impact is small for S&P 500 names.
+- **Costs are assumed:** flat 2 bps one way, not measured from quotes, and no market impact. It is optimistic for the least liquid names and wide-spread periods (e.g. March 2020). At 4% gross per pair, impact is small for S&P 500 names. Validating it needs SIP quote samples.
 - **Not untouched data:** 2020–2025 was already used in S02/S03 for pair discovery. This study is development; the 2026 holdout is the confirmation.
 - **Optimistic CIs:** shared legs across pairs make the bootstrap CIs optimistic. The placebo gates are the main control.
 - **Sticky re-testing:** once tradable, a pair is tested every day, while other pairs are tested only while in the pool. P-pairs uses the same spell calendar, so this does not favour the strategy against it.

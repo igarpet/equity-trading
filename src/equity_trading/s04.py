@@ -29,7 +29,8 @@ import pandas as pd
 
 from .coint import ar1_half_life, eg_test, ols_ab
 
-S04_VERSION = "0.1.1"
+S04_VERSION = "0.2.0"
+S04_TESTS_VERSION = "0.1.1"   # pair-test logic; the test cache is keyed on this, so cost-only changes reuse it
 NY = "America/New_York"
 
 
@@ -63,7 +64,9 @@ class S04Config:
     max_pairs: int = 15
     initial_equity: float = 100_000.0
     cost_filter_mult: float = 2.0
-    # costs
+    # costs (amendment 2026-11-03: flat 2 bps replaces Abdi-Ranaldo, which gave ~36 bps on 15m bars)
+    cost_model: str = "flat"         # "flat" | "abdi_ranaldo" (diagnostic)
+    flat_half_spread_bps: float = 2.0
     spread_lookback_sessions: int = 20
     min_half_spread_bps: float = 1.0
     cost_mult: float = 1.0
@@ -91,7 +94,10 @@ class Panel:
         return len(self.days)
 
     def half_spread(self, cfg: S04Config) -> np.ndarray:
-        """(D, N) one-way cost applied on day d, from sessions d-L..d-1 only (no look-ahead)."""
+        """(D, N) one-way cost applied on day d. Flat model: cfg.flat_half_spread_bps everywhere.
+        Abdi-Ranaldo model: from sessions d-L..d-1 only (no look-ahead)."""
+        if cfg.cost_model == "flat":
+            return np.full(self.s2_daily.shape, cfg.flat_half_spread_bps * 1e-4 * cfg.cost_mult)
         s2 = pd.DataFrame(self.s2_daily)
         m = s2.rolling(cfg.spread_lookback_sessions, min_periods=5).mean().shift(1).to_numpy()
         hs = 0.5 * np.sqrt(np.clip(m, 0.0, None))

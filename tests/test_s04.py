@@ -151,3 +151,12 @@ def test_load_panel_places_bars_on_grid(monkeypatch):
     monkeypatch.setattr("equity_trading.alpaca.load_bars", lambda s, tf, years: full)
     p = s04.load_panel(["AAA"], "15Min", [2024])
     assert p.n_days == 252 and np.isfinite(p.c).all()
+
+
+def test_flat_cost_model():
+    panel, _ = s04.synthetic_ohlc_panel([2025])
+    cfg = s04.S04Config()
+    hs = panel.half_spread(cfg)
+    assert cfg.cost_model == "flat" and np.allclose(hs, 2e-4)
+    assert np.allclose(panel.half_spread(replace(cfg, cost_mult=2.0)), 4e-4)
+    assert np.allclose(panel.half_spread(replace(cfg, cost_mult=0.0)), 0.0)
