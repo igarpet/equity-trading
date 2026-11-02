@@ -20,7 +20,7 @@ import pandas as pd
 
 from .data import NY, vendor_dir
 
-ALPACA_VERSION = "0.2.0"
+ALPACA_VERSION = "0.3.0"
 BASE_URL = "https://data.alpaca.markets/v2/stocks/bars"
 MAX_CALLS_PER_MIN = 180  # free plan limit is 200
 
@@ -162,22 +162,42 @@ def load_bars(symbol: str, timeframe: str, years: list[int]) -> pd.DataFrame:
     return df
 
 
+def session_schedule(years: list[int]) -> pd.DataFrame:
+    """NYSE sessions (index: session date) with market_open / market_close in UTC."""
+    import pandas_market_calendars as mcal
+    sc = mcal.get_calendar("XNYS").schedule(f"{years[0]}-01-01", f"{years[-1]}-12-31")
+    sc.index = pd.DatetimeIndex(sc.index).date
+    return sc[["market_open", "market_close"]]
+
+
+def in_regular_session(t_utc: pd.Series, sched: pd.DataFrame) -> np.ndarray:
+    """True where the bar start lies in [open, close) of its NYSE session."""
+    t = pd.to_datetime(t_utc, utc=True)
+    d = t.dt.tz_convert(NY).dt.date
+    op = d.map(sched["market_open"]); cl = d.map(sched["market_close"])
+    ok = op.notna() & cl.notna()
+    res = np.zeros(len(t), dtype=bool)
+    res[ok.to_numpy()] = ((t[ok] >= pd.to_datetime(op[ok], utc=True)) & (t[ok] < pd.to_datetime(cl[ok], utc=True))).to_numpy()
+    return res
+
+
 def regular_session_panel(symbols: list[str], timeframe: str, years: list[int],
                           field: str = "c", ffill_limit: int = 2) -> pd.DataFrame:
     """Wide panel (New York time index, one column per symbol) of regular-session bars.
 
-    A bar is regular-session if it starts at or after 09:30 and before 16:00 New York
-    time. Missing bars are forward-filled within the same session up to ffill_limit
-    bars (no fill across days); remaining gaps stay NaN.
+    A bar is regular-session if it starts at or after the NYSE open and before the NYSE
+    close of its trading day (exchange calendar, so early-close days end at 13:00 and
+    non-trading days are dropped). Missing bars are forward-filled within the same session
+    up to ffill_limit bars (no fill across days); remaining gaps stay NaN.
     """
+    sched = session_schedule(years)
     cols = {}
     for s in symbols:
         b = load_bars(s, timeframe, years)
         if b.empty:
             continue
+        keep = in_regular_session(b["t"], sched)
         t = b["t"].dt.tz_convert(NY)
-        m = t.dt.hour * 60 + t.dt.minute
-        keep = (m >= 570) & (m < 960)
         cols[s] = pd.Series(b.loc[keep, field].to_numpy(dtype=float), index=pd.DatetimeIndex(t[keep]))
     panel = pd.DataFrame(cols).sort_index()
     if ffill_limit:

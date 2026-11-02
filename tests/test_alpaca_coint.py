@@ -135,3 +135,16 @@ def test_rate_limiter_spaces_requests_across_threads():
     [t.start() for t in th]; [t.join() for t in th]
     d = np.diff(sorted(stamps))
     assert d.min() > 0.09
+
+
+def test_early_close_bars_dropped(tmp_path, monkeypatch):
+    """2024-11-29 closes at 13:00: bars at 12:30 kept, 13:00+ (after-hours) dropped; holidays dropped."""
+    monkeypatch.setenv("EQUITY_TRADING_DIR", str(tmp_path))
+    d = tmp_path / "Alpaca" / "bars" / "30Min" / "AAA"
+    d.mkdir(parents=True)
+    t = pd.to_datetime(["2024-11-29T17:30Z", "2024-11-29T18:00Z", "2024-11-29T20:30Z",   # 12:30, 13:00, 15:30 NY
+                        "2024-11-28T15:00Z",                                              # Thanksgiving
+                        "2024-12-02T20:30Z", "2024-12-02T21:00Z"], utc=True)              # 15:30 kept, 16:00 dropped
+    pd.DataFrame({"t": t, "c": [1.0, 2, 3, 4, 5, 6]}).to_parquet(d / "2024.parquet", index=False)
+    p = alpaca.regular_session_panel(["AAA"], "30Min", [2024])
+    assert p["AAA"].tolist() == [1.0, 5.0]
