@@ -293,3 +293,17 @@ def test_s07_skip_open_bars(run7):
     assert none["total_traded"] == 0 and none["final_equity"] == pytest.approx(cfg.initial_equity)
     sk = s07.backtest(panel, P, sc, ec, H, replace(cfg, skip_open_bars=2), record=False)
     assert 0 < sk["total_traded"]
+
+
+def test_s05_entry_modes(run):
+    cfg, panel, sc, ec, P, bt = run
+    x10 = replace(cfg, close_long=1.0, close_short=-1.0)
+    lvl = s05.backtest(panel, P, sc, ec, replace(x10, open_long=-3.0, open_short=3.0))
+    assert (lvl["trades"]["s_entry"].abs() >= 3.0).all()
+    pk = s05.backtest(panel, P, sc, ec, replace(x10, entry_mode="peak"))
+    t = pk["trades"]
+    assert len(t) > 0 and (t["s_entry"].abs() >= 1.25).all()
+    assert (np.sign(t["s_entry"]) == -t["side"]).all()
+    pk3 = s05.backtest(panel, P, sc, ec, replace(x10, entry_mode="peak", peak_open=3.0), record=False)
+    assert pk3["entry_rate"] <= pk["entry_rate"]
+    assert bt["final_equity"] == pytest.approx(s05.backtest(panel, P, sc, ec, cfg, record=False)["final_equity"])

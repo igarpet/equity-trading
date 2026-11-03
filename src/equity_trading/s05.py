@@ -23,7 +23,7 @@ import pandas as pd
 
 from .s04 import Panel, block_bootstrap_mean, perf_metrics, placebo_rank  # noqa: F401  (re-exported for the notebook)
 
-S05_VERSION = "0.1.1"
+S05_VERSION = "0.1.2"
 
 SECTOR_ETF = {"Information Technology": "XLK", "Financials": "XLF", "Energy": "XLE", "Health Care": "XLV",
               "Industrials": "XLI", "Consumer Discretionary": "XLY", "Consumer Staples": "XLP", "Utilities": "XLU",
@@ -44,6 +44,12 @@ class S05Config:
     close_short: float = 0.75
     elig_long: float = -0.50           # placebo-timing eligibility (fixed at the paper's exit band, so it does
     elig_short: float = 0.75           # not move with the exit rule): flat stocks with s < elig_long or s > elig_short
+    entry_mode: str = "level"          # "level": |s| beyond open_long / open_short
+                                       # "peak": the current excursion (|s| >= peak_min, same sign, reset daily)
+                                       # reached peak_open and |s| has since fallen by >= peak_retreat, |s| >= peak_min
+    peak_min: float = 1.25
+    peak_open: float = 1.25
+    peak_retreat: float = 0.25
     size_per_stock: float = 0.01       # stock-leg notional, fraction of equity
     max_positions: int = 100
     initial_equity: float = 100_000.0
@@ -169,6 +175,8 @@ def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.nd
         al, be, mc, sg, vd = (params[k][e] for k in ("alpha", "beta", "m", "sig", "valid"))
         beta_today = np.where(np.isfinite(be), be, beta_today)
         X = np.zeros(N)
+        pk_abs = np.zeros(N)                   # excursion peak |s| (0: no excursion); reset each day
+        pk_sgn = np.zeros(N)
         a0, a1 = panel.day_start[t], panel.day_start[t + 1]
         for B in range(a0, a1):
             if half_spread is not None:
@@ -220,6 +228,13 @@ def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.nd
             with np.errstate(invalid="ignore", divide="ignore"):
                 s = (X - mc) / sg
             fin = np.isfinite(s)
+            if cfg.entry_mode == "peak":
+                a = np.where(fin, np.abs(s), 0.0)
+                sg_ = np.sign(np.where(fin, s, 0.0))
+                inside = a >= cfg.peak_min
+                same = inside & (sg_ == pk_sgn)
+                pk_abs = np.where(same, np.maximum(pk_abs, a), np.where(inside, a, 0.0))
+                pk_sgn = np.where(inside, sg_, 0.0)
             # exits
             ex = ((side > 0) & fin & (s > cfg.close_long)) | ((side < 0) & fin & (s < cfg.close_short))
             inv = (side != 0) & ~vd
@@ -233,7 +248,10 @@ def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.nd
                 sig_m = elig & (rng.random(N) < entry_prob)
             else:
                 elig = flat & ((s < cfg.elig_long) | (s > cfg.elig_short))
-                sig_m = flat & ((s < cfg.open_long) | (s > cfg.open_short))
+                if cfg.entry_mode == "peak":
+                    sig_m = flat & (pk_abs >= cfg.peak_open) & (a <= pk_abs - cfg.peak_retreat) & (a >= cfg.peak_min)
+                else:
+                    sig_m = flat & ((s < cfg.open_long) | (s > cfg.open_short))
             elig_count += int(elig.sum())
             sig_count += int(sig_m.sum())
             if sig_m.any():
