@@ -79,3 +79,10 @@ jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeou
 **Data:** the first run downloads 15Min bars for the 11 sector ETFs (about 5 min; stocks and SPY are already cached) and builds a new panel cache.
 
 **Compute:** estimation takes a few minutes. One backtest takes roughly 10–30 s, so 1,000 timing placebos take roughly 1–2 h on 4 cores. Lower `N_PLACEBO` for a first look; the gates need 1,000.
+
+## Correction C1 (2026-11-03): panel field-order bug, all earlier real-data results void
+
+- **The bug:** `s04.load_panel` passed bar fields to the panel builder as (open, high, low, close), but the builder expected (open, close, high, low). On real data the panel's close was the bar **high**, its high was the **low**, and its low was the **close**. Opens were correct. The synthetic panel was built correctly, so tests did not catch it.
+- **Scope:** every real-data run of S04, S05a, S05b and S06 before this correction (fixed in the commit that adds this note). Signals, estimates and marks used bar highs. The S04 Abdi–Ranaldo estimate (36 bps, the reason for amendment A1) was computed from scrambled fields. S02 and S03 used a different, correct loader and are not affected. The S05b quote samples are not affected.
+- **Fix:** fields passed by name. A regression test checks the OHLC fields stay distinct. One shared panel cache is now keyed on `PANEL_VERSION` 0.2.0, and every derived cache is keyed on it too, so no stale panel or result can be reused.
+- **Status:** the pre-registered rules are unchanged; only the data were wrong. The earlier results in `results/` stay in git history and must not be cited. Re-runs replace them.

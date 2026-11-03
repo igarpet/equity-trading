@@ -30,7 +30,9 @@ import pandas as pd
 from .coint import ar1_half_life, eg_test, ols_ab
 
 S04_VERSION = "0.2.0"
-S04_TESTS_VERSION = "0.1.1"   # pair-test logic; the test cache is keyed on this, so cost-only changes reuse it
+S04_TESTS_VERSION = "0.1.2"   # pair-test logic; the test cache is keyed on this, so cost-only changes reuse it
+PANEL_VERSION = "0.2.0"       # 0.2.0: load_panel field order fixed (before: close=high, high=low, low=close). Every
+                              # panel cache and every cache derived from a panel is keyed on this.
 NY = "America/New_York"
 
 
@@ -180,7 +182,8 @@ def load_panel(symbols: list[str], timeframe: str, years: list[int], ffill_bars:
     filled = np.isfinite(out["c"][:, kept]).mean() if len(kept) else 0.0
     if filled < 0.5:
         raise RuntimeError(f"load_panel: only {filled:.1%} of grid cells have a close; bar timestamps do not match the grid.")
-    return _assemble(grid, [symbols[j] for j in kept], *(out[k][:, kept] for k in "ohlc"), ffill_bars=ffill_bars)
+    return _assemble(grid, [symbols[j] for j in kept], o=out["o"][:, kept], c=out["c"][:, kept], h=out["h"][:, kept],
+                     l=out["l"][:, kept], ffill_bars=ffill_bars)
 
 
 def synthetic_ohlc_panel(years: list[int], bars_per_day: int = 26, half_spread_bps: float = 3.0,
@@ -808,3 +811,39 @@ def run_placebo(panel: Panel, params: _Params, spells: pd.DataFrame, half_spread
     instead of pickling notebook globals."""
     r = backtest(panel, params, spells, half_spread, cfg, mode=mode, entry_prob=entry_prob, seed=seed, record=False)
     return {"mode": mode, "seed": seed, **perf_metrics(r["daily_equity"], cfg.initial_equity, start)}
+
+
+# =================================================================== shared panel cache
+def panel_cache_path(timeframe: str):
+    """One panel cache per timeframe, keyed on the Alpaca client and panel versions."""
+    from .alpaca import ALPACA_VERSION
+    from .data import work_dir
+    d = work_dir() / "panels"
+    d.mkdir(parents=True, exist_ok=True)
+    return d / f"panel_{timeframe}_alpaca{ALPACA_VERSION}_p{PANEL_VERSION}.npz"
+
+
+def cached_panel(symbols: list[str], timeframe: str, years: list[int], ffill_bars: int = 2) -> Panel:
+    """Load the shared panel cache if it holds every requested symbol (missing-from-Alpaca symbols are
+    remembered), else build from the bar cache for the union of cached and requested symbols and save it.
+    Returns the full cached panel; callers select their own columns by symbol."""
+    p = panel_cache_path(timeframe)
+    want = set(symbols)
+    if p.exists():
+        z = np.load(p, allow_pickle=True)
+        have = set(z["symbols"]) | set(z["absent"])
+        if want <= have and list(z["years"]) == list(years):
+            return Panel(index=pd.DatetimeIndex(z["index"]).tz_localize("UTC").tz_convert(NY), symbols=list(z["symbols"]),
+                         o=z["o"], c=z["c"], day_start=z["day_start"], days=z["days"], s2_daily=z["s2"], h=z["h"], l=z["l"])
+        if list(z["years"]) == list(years):
+            want |= have
+    syms = sorted(want)
+    panel = load_panel(syms, timeframe, years, ffill_bars=ffill_bars)
+    absent = sorted(set(syms) - set(panel.symbols))
+    tmp = p.with_name(p.stem + "_tmp.npz")
+    np.savez(tmp, index=panel.index.tz_convert("UTC").tz_localize(None).to_numpy(), symbols=np.array(panel.symbols),
+             absent=np.array(absent, dtype=object), years=np.array(years), o=panel.o, c=panel.c, day_start=panel.day_start,
+             days=panel.days, s2=panel.s2_daily, h=panel.h, l=panel.l)
+    import os
+    os.replace(tmp, p)
+    return panel

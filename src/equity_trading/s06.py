@@ -28,7 +28,7 @@ import pandas as pd
 from .s04 import Panel, perf_metrics
 from .s05 import log_returns
 
-S06_VERSION = "0.1.0"
+S06_VERSION = "0.1.1"
 
 
 @dataclass(frozen=True)

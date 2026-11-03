@@ -175,3 +175,35 @@ def test_fixed_window_uses_full_length_when_max_allows():
     assert r[7] == 120 * 26 and r[4] < 0.01                  # window, p-value
     capped = s04.test_pair(y, x, 20 * 26, s04.S04Config(window_rule="fixed", fixed_window_sessions=120), 26)
     assert capped[7] == 60 * 26                              # max_window_sessions=60 caps it
+
+
+def test_load_panel_keeps_ohlc_fields_apart(monkeypatch):
+    """Regression: load_panel once passed (o, h, l, c) into (o, c, h, l)."""
+    g = s04.bar_grid([2024], 15)
+    n = len(g)
+    bars = pd.DataFrame({"t": g.tz_convert("UTC"), "o": np.full(n, 100.0), "h": np.full(n, 103.0),
+                         "l": np.full(n, 97.0), "c": np.full(n, 101.0), "v": 1, "n": 1, "vw": 100.0})
+    monkeypatch.setattr("equity_trading.alpaca.load_bars", lambda s, tf, years: bars)
+    p = s04.load_panel(["AAA"], "15Min", [2024])
+    assert np.all(p.o == 100.0) and np.all(p.c == 101.0) and np.all(p.h == 103.0) and np.all(p.l == 97.0)
+
+
+def test_cached_panel_roundtrip_and_superset(tmp_path, monkeypatch):
+    monkeypatch.setenv("EQUITY_TRADING_DIR", str(tmp_path))
+    g = s04.bar_grid([2024], 15)
+    n = len(g)
+
+    def bars(sym, tf, years):
+        if sym == "ZZZ":
+            raise FileNotFoundError
+        k = {"AAA": 0.0, "BBB": 10.0}[sym]
+        return pd.DataFrame({"t": g.tz_convert("UTC"), "o": 100.0 + k, "h": 103.0 + k, "l": 97.0 + k, "c": 101.0 + k,
+                             "v": 1, "n": 1, "vw": 100.0})
+    monkeypatch.setattr("equity_trading.alpaca.load_bars", bars)
+    p1 = s04.cached_panel(["AAA", "ZZZ"], "15Min", [2024])
+    assert p1.symbols == ["AAA"] and s04.panel_cache_path("15Min").exists()
+    p2 = s04.cached_panel(["AAA"], "15Min", [2024])                       # served from cache, ZZZ remembered absent
+    assert p2.symbols == ["AAA"] and np.all(p2.c == 101.0) and np.all(p2.l == 97.0)
+    p3 = s04.cached_panel(["BBB"], "15Min", [2024])                       # rebuilt as the union
+    assert p3.symbols == ["AAA", "BBB"] and np.all(p3.c[:, 1] == 111.0)
+    assert "_p" + s04.PANEL_VERSION in s04.panel_cache_path("15Min").name

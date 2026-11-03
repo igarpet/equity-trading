@@ -23,7 +23,7 @@ import pandas as pd
 
 from .s04 import Panel, block_bootstrap_mean, perf_metrics, placebo_rank  # noqa: F401  (re-exported for the notebook)
 
-S05_VERSION = "0.1.0"
+S05_VERSION = "0.1.1"
 
 SECTOR_ETF = {"Information Technology": "XLK", "Financials": "XLF", "Energy": "XLE", "Health Care": "XLV",
               "Industrials": "XLI", "Consumer Discretionary": "XLY", "Consumer Staples": "XLP", "Utilities": "XLU",
