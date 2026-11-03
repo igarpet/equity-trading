@@ -1,9 +1,10 @@
 {
   "files": [
     "daily_equity.csv",
+    "manifest.json",
     "placebo_timing.csv",
     "summary.json",
     "trades.csv"
   ],
-  "cache": "D:\\MarketData\\EquityTrading\\results\\s05a\\etf_alpaca0.3.0_s050.1.0"
+  "cache": "D:\\MarketData\\EquityTrading\\results\\s05a\\etf_alpaca0.3.0_s050.1.1_p0.2.0"
 }
