@@ -1,0 +1,248 @@
+{
+  "study": "S07b",
+  "synthetic": false,
+  "years": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "config": {
+    "timeframe": "15Min",
+    "ffill_bars": 2,
+    "window_sessions": 20,
+    "min_bar_share": 0.95,
+    "max_tau_frac": 0.5,
+    "center_m": true,
+    "s_cap": 3.0,
+    "gross": 1.0,
+    "w_cap": 0.02,
+    "band_mult": 1.0,
+    "etf_band": 0.001,
+    "skip_open_bars": 2,
+    "initial_equity": 100000.0,
+    "cost_mult": 1.0,
+    "n_placebo": 300,
+    "seed": 42
+  },
+  "arms": {
+    "band15": 1.5,
+    "band20": 2.0
+  },
+  "reference": {
+    "band10skip": 1.0
+  },
+  "trading_start": "2020-02-03",
+  "n_placebo_per_arm": 300,
+  "metrics": {
+    "band15 1x": {
+      "total_return": 0.0048502267203307525,
+      "sharpe": 0.04762583299163548,
+      "max_drawdown": 0.06141816589524729,
+      "mean_daily": 5.910721701337646e-06,
+      "days": 1486.0,
+      "annual_turnover_x_equity": 74.99991882626124,
+      "annual_cost_pct_equity": 2.422145534551764,
+      "stock_trades_per_day": 182.768661735037,
+      "avg_gross_exposure": 0.9353880370494121,
+      "ann_return_per_unit_gross": 0.0008775645195631862
+    },
+    "band15 2x": {
+      "total_return": -0.12366249551112585,
+      "sharpe": -0.6997735769027393,
+      "max_drawdown": 0.15715238291590528,
+      "mean_daily": -8.612727981939047e-05,
+      "days": 1486.0,
+      "annual_turnover_x_equity": 74.93462651403844,
+      "annual_cost_pct_equity": 4.775450445315698,
+      "stock_trades_per_day": 175.69939475453933,
+      "avg_gross_exposure": NaN,
+      "ann_return_per_unit_gross": -0.02366601047614064
+    },
+    "band15 0x": {
+      "total_return": 0.15928341700001147,
+      "sharpe": 0.8180062355602218,
+      "max_drawdown": 0.059759093421968945,
+      "mean_daily": 0.00010206557086447748,
+      "days": 1486.0,
+      "annual_turnover_x_equity": 74.71599184638004,
+      "annual_cost_pct_equity": 0.0,
+      "stock_trades_per_day": 189.6577000672495,
+      "avg_gross_exposure": NaN,
+      "ann_return_per_unit_gross": 0.027134669285324188
+    },
+    "band20 1x": {
+      "total_return": 0.003681233402945905,
+      "sharpe": 0.04523419757290375,
+      "max_drawdown": 0.0393843652771656,
+      "mean_daily": 3.5865124099003057e-06,
+      "days": 1486.0,
+      "annual_turnover_x_equity": 39.120025773721444,
+      "annual_cost_pct_equity": 1.212095310697596,
+      "stock_trades_per_day": 94.12373907195696,
+      "avg_gross_exposure": 0.7182807085002223,
+      "ann_return_per_unit_gross": 0.0008677968198602247
+    },
+    "band20 2x": {
+      "total_return": -0.07072192614530226,
+      "sharpe": -0.6107910420193712,
+      "max_drawdown": 0.096551282084819,
+      "mean_daily": -4.821652351106983e-05,
+      "days": 1486.0,
+      "annual_turnover_x_equity": 39.02221372723675,
+      "annual_cost_pct_equity": 2.400718129452798,
+      "stock_trades_per_day": 92.17484868863484,
+      "avg_gross_exposure": NaN,
+      "ann_return_per_unit_gross": -0.01720969787457581
+    },
+    "band20 0x": {
+      "total_return": 0.08065788299998844,
+      "sharpe": 0.6688754719636179,
+      "max_drawdown": 0.03863581082101941,
+      "mean_daily": 5.3290775058616347e-05,
+      "days": 1486.0,
+      "annual_turnover_x_equity": 39.02951318019344,
+      "annual_cost_pct_equity": 0.0,
+      "stock_trades_per_day": 95.8843308675185,
+      "avg_gross_exposure": NaN,
+      "ann_return_per_unit_gross": 0.018434907384307576
+    },
+    "band10skip 1x": {
+      "total_return": -0.043220593126920726,
+      "sharpe": -0.1589083093607095,
+      "max_drawdown": 0.09101592082524335,
+      "mean_daily": -2.535463695281808e-05,
+      "days": 1486.0,
+      "annual_turnover_x_equity": 133.0076521378899,
+      "annual_cost_pct_equity": 4.492298503112087,
+      "stock_trades_per_day": 328.5568258238063,
+      "avg_gross_exposure": 1.0665157415648265,
+      "ann_return_per_unit_gross": -0.0069990319192425945
+    },
+    "band10skip 0x": {
+      "total_return": 0.2609240470000045,
+      "sharpe": 0.9946073783792242,
+      "max_drawdown": 0.0756369152014863,
+      "mean_daily": 0.00016030539961709017,
+      "days": 1486.0,
+      "annual_turnover_x_equity": 132.2912436070925,
+      "annual_cost_pct_equity": 0.0,
+      "stock_trades_per_day": 354.27303295225283,
+      "avg_gross_exposure": NaN,
+      "ann_return_per_unit_gross": 0.03759909482293177
+    }
+  },
+  "placebo_shuffle_ranks": {
+    "band15": {
+      "total_return": {
+        "value": 0.0048502267203307525,
+        "percentile": 100.0,
+        "p_upper": 0.0033222591362126247,
+        "placebo_median": -0.2513058839022595,
+        "placebo_p95": -0.22671228186634854
+      },
+      "sharpe": {
+        "value": 0.04762583299163548,
+        "percentile": 100.0,
+        "p_upper": 0.0033222591362126247,
+        "placebo_median": -4.643676205685157,
+        "placebo_p95": -4.057708222541616
+      }
+    },
+    "band20": {
+      "total_return": {
+        "value": 0.003681233402945905,
+        "percentile": 100.0,
+        "p_upper": 0.0033222591362126247,
+        "placebo_median": -0.11545221406286282,
+        "placebo_p95": -0.09393211223178197
+      },
+      "sharpe": {
+        "value": 0.04523419757290375,
+        "percentile": 100.0,
+        "p_upper": 0.0033222591362126247,
+        "placebo_median": -2.462665824064265,
+        "placebo_p95": -1.9235317903489941
+      }
+    }
+  },
+  "bootstrap": {
+    "band15": {
+      "10": [
+        5.910721701337646e-06,
+        -0.00010091796386031717,
+        0.00012102829438074647
+      ],
+      "20": [
+        5.910721701337646e-06,
+        -9.757870011715284e-05,
+        0.00011424693253851967
+      ],
+      "40": [
+        5.910721701337646e-06,
+        -6.365071618768559e-05,
+        0.00010862445737981544
+      ]
+    },
+    "band20": {
+      "10": [
+        3.5865124099003057e-06,
+        -6.65916107408765e-05,
+        7.677057661730715e-05
+      ],
+      "20": [
+        3.5865124099003057e-06,
+        -6.422595028357807e-05,
+        7.260990555751707e-05
+      ],
+      "40": [
+        3.5865124099003057e-06,
+        -4.3327281578363274e-05,
+        6.835143495158665e-05
+      ]
+    }
+  },
+  "market": {
+    "band15": {
+      "alpha_daily": -1.664393248511235e-05,
+      "alpha_p": 0.7502673275596041,
+      "beta": 0.03491042688670347,
+      "r2": 0.05429495050699562,
+      "n": 1486
+    },
+    "band20": {
+      "alpha_daily": -1.105462813156982e-05,
+      "alpha_p": 0.7433966438875557,
+      "beta": 0.02266177358276729,
+      "r2": 0.05605597028364928,
+      "n": 1486
+    }
+  },
+  "gates": {
+    "band15": {
+      "G1_bootstrap": false,
+      "G2_vs_shuffled_signal": true,
+      "G3_double_cost": false,
+      "statistical_verdict": "PARTIAL",
+      "economic_verdict": "NOT_PROFITABLE_AFTER_COSTS",
+      "verdict": "NO_EDGE"
+    },
+    "band20": {
+      "G1_bootstrap": false,
+      "G2_vs_shuffled_signal": true,
+      "G3_double_cost": false,
+      "statistical_verdict": "PARTIAL",
+      "economic_verdict": "NOT_PROFITABLE_AFTER_COSTS",
+      "verdict": "NO_EDGE"
+    }
+  },
+  "versions": {
+    "package": "0.1.0",
+    "alpaca": "0.3.0",
+    "s05": "0.1.1",
+    "s07": "0.1.1",
+    "panel": "0.2.0"
+  }
+}

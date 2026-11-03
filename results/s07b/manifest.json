@@ -1,0 +1,10 @@
+{
+  "files": [
+    "daily_equity_band15.csv",
+    "daily_equity_band20.csv",
+    "placebo_shuffle_band15.csv",
+    "placebo_shuffle_band20.csv",
+    "summary.json"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\s07b\\alpaca0.3.0_s070.1.1_p0.2.0"
+}

@@ -1,0 +1,17 @@
+{
+  "files": [
+    "daily_equity_paper.csv",
+    "daily_equity_x00.csv",
+    "daily_equity_x05.csv",
+    "daily_equity_x10.csv",
+    "placebo_timing_x00.csv",
+    "placebo_timing_x05.csv",
+    "placebo_timing_x10.csv",
+    "summary.json",
+    "trades_paper.csv",
+    "trades_x00.csv",
+    "trades_x05.csv",
+    "trades_x10.csv"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\s05c\\alpaca0.3.0_s050.1.1_p0.2.0"
+}
