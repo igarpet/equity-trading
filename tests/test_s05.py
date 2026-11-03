@@ -219,3 +219,62 @@ def test_s06_placebo_seeded(run6):
     cfg, panel, sc, ec, P, H = run6
     a = s06.run_placebo(panel, P, sc, ec, H, cfg, 0.05, 3, pd.Timestamp("2025-02-01"))
     assert a == s06.run_placebo(panel, P, sc, ec, H, cfg, 0.05, 3, pd.Timestamp("2025-02-01"))
+
+
+# ------------------------------------------------------------------ S07: continuous weights with a no-trade band
+from equity_trading import s07  # noqa: E402
+
+
+def test_s07_target_weights():
+    cfg = s07.S07Config(w_cap=1.0)
+    s = np.array([2.0, -1.0, 0.5, 5.0, np.nan])
+    valid = np.array([True, True, True, True, True])
+    w = s07.target_weights(s, valid, cfg)
+    assert np.abs(w).sum() == pytest.approx(cfg.gross)
+    assert np.all(np.sign(w[:4]) == -np.sign(s[:4])) and w[4] == 0
+    assert w[3] == pytest.approx(w[0] * 3 / 2)                           # saturates at s_cap = 3
+    capped = s07.target_weights(s, valid, s07.S07Config(w_cap=0.1))
+    assert np.abs(capped).max() <= 0.1 + 1e-12
+    assert np.all(s07.target_weights(s, ~valid, cfg) == 0)
+
+
+@pytest.fixture(scope="module")
+def run7():
+    cfg = s07.S07Config(band_mult=0.5)
+    panel, stocks = s04.synthetic_ohlc_panel([2025])
+    sc = np.array([panel.symbols.index(s) for s in stocks])
+    sect = {s: k for k, v in UNIVERSE_01.items() for s in v}
+    ec = np.array([panel.symbols.index(SECTOR_ETF_01[sect[s]]) for s in stocks])
+    P = s05.estimate_all(panel, sc, ec, cfg.s05(), s07.first_decision_day(cfg))
+    H = np.full(panel.c.shape, 3e-4)
+    return cfg, panel, sc, ec, P, H
+
+
+def test_s07_band_cuts_turnover_and_costs_scale(run7):
+    cfg, panel, sc, ec, P, H = run7
+    b0 = s07.backtest(panel, P, sc, ec, H, replace(cfg, band_mult=0.0), record=False)
+    b5 = s07.backtest(panel, P, sc, ec, H, cfg, record=False)
+    assert b5["total_traded"] < 0.5 * b0["total_traded"]
+    free = s07.backtest(panel, P, sc, ec, H, replace(cfg, cost_mult=0.0), record=False)
+    dbl = s07.backtest(panel, P, sc, ec, H, replace(cfg, cost_mult=2.0), record=False)
+    assert free["total_cost"] == 0 and dbl["final_equity"] < b5["final_equity"] < free["final_equity"]
+
+
+def test_s07_hedge_tracks_stock_book(run7):
+    cfg, panel, sc, ec, P, H = run7
+    b = s07.backtest(panel, P, sc, ec, H, cfg)
+    assert b["gross_exposure"].max() > 0
+    assert b["total_cost"] / b["total_traded"] == pytest.approx(3e-4, rel=1e-6)   # every traded dollar pays hs
+
+
+def test_s07_placebo_seeded(run7):
+    cfg, panel, sc, ec, P, H = run7
+    a = s07.run_placebo(panel, P, sc, ec, H, cfg, 5, pd.Timestamp("2025-02-01"))
+    assert a == s07.run_placebo(panel, P, sc, ec, H, cfg, 5, pd.Timestamp("2025-02-01"))
+
+
+def test_s07_gates():
+    boot = {10: (1e-4, 1e-5, 2e-4), 20: (1e-4, 1e-5, 2e-4), 40: (1e-4, 1e-5, 2e-4)}
+    sh = {"total_return": {"p_upper": 0.02}, "sharpe": {"p_upper": 0.03}}
+    g = s07.gates(boot, sh, {"total_return": 0.1, "sharpe": 0.4}, {"total_return": 0.2})
+    assert not g["G2_vs_shuffled_signal"] and g["verdict"] == "NO_EDGE"            # 0.03 > 0.025
