@@ -1,6 +1,7 @@
 {
   "files": [
     "daily_equity.csv",
+    "manifest.json",
     "placebos.csv",
     "spells.csv",
     "summary.json",
