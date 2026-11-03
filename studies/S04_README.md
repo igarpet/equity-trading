@@ -7,7 +7,7 @@
 | **Engine** | `src/equity_trading/s04.py` (tests: `tests/test_s04.py`) |
 | **Data** | Alpaca SIP bars, `adjustment=all`, regular session, 15Min, 2020-01-01 → 2025-12-31 (same window as S03). 2026 sealed as the second holdout. |
 | **Universe** | `reference/sp500_constituents_20260913.csv`; SPY is downloaded as the benchmark only (never traded). |
-| **Arms** | `ARM = "hl5"` and `ARM = "fixed60"`, run once each. Outputs go to `results/s04/<ARM>/`. |
+| **Arms** | `ARM = "hl5"`, `"fixed60"` and `"fixed120"` (amendment A2), run once each. Outputs go to `results/s04/<ARM>/`. |
 
 ## 0. Prior evidence, stated before the run
 
@@ -84,6 +84,18 @@ All decisions use data up to the close of decision day *e* and take effect on *e
 - **Status:** this corrects an implausible input. It was not chosen by comparing performance. The 2× (4 bps) and 0× runs and G4 are unchanged. The Abdi–Ranaldo estimate is still plotted as a diagnostic.
 - **Also from that run:** `hl5` passed raw p ≤ 1% on 2.1% of pair-days, BH on 0.08%, with 125 spells (median 4 sessions) and 1 trade, as the window-power check predicted.
 - **Scope:** both arms are run with A1. Gates and every other rule are unchanged.
+
+**A2 (2026-11-03, after the `fixed60` run, commit fec1b00).** Third arm, `fixed120`: 120-session test window (`max_window_sessions = 120`).
+- **Motivation:** the synthetic power check rose steeply from 20 to 60 sessions. `fixed60` averaged only 9.4 tradable pairs per day, with none on 388 days.
+- **Consequence:** the window needs 120 sessions of history, so trading starts about 60 sessions later than in the other arms, missing most of March–June 2020. For a like-for-like comparison, the notebook also reports the other arms' metrics rebased to this arm's start (reported only).
+- **Status:** chosen after seeing `fixed60`, so it is exploratory. Gates and all other rules are unchanged.
+- **Data policy unchanged:** 2020–2025 only, 2026 sealed.
+
+**`fixed60` result (commit fec1b00, for the record):**
+- +3.3% net over 5.75 years, Sharpe 0.59.
+- 77% of the profit came from 2020.
+- Vs random pairs: 85th percentile (p = 0.15). Vs random timing: 63rd percentile.
+- Verdict: `NO_EDGE`.
 
 ## 3. Known limitations
 

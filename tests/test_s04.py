@@ -160,3 +160,18 @@ def test_flat_cost_model():
     assert cfg.cost_model == "flat" and np.allclose(hs, 2e-4)
     assert np.allclose(panel.half_spread(replace(cfg, cost_mult=2.0)), 4e-4)
     assert np.allclose(panel.half_spread(replace(cfg, cost_mult=0.0)), 0.0)
+
+
+def test_fixed_window_uses_full_length_when_max_allows():
+    rng = np.random.default_rng(1)
+    n = 130 * 26
+    x = np.cumsum(rng.standard_normal(n) * 1e-3)
+    u = np.zeros(n)
+    for i in range(1, n):
+        u[i] = 0.9 * u[i - 1] + rng.standard_normal() * 1e-3
+    y = 0.8 * x + u
+    cfg = s04.S04Config(window_rule="fixed", fixed_window_sessions=120, max_window_sessions=120)
+    r = s04.test_pair(y, x, 20 * 26, cfg, 26)
+    assert r[7] == 120 * 26 and r[4] < 0.01                  # window, p-value
+    capped = s04.test_pair(y, x, 20 * 26, s04.S04Config(window_rule="fixed", fixed_window_sessions=120), 26)
+    assert capped[7] == 60 * 26                              # max_window_sessions=60 caps it
