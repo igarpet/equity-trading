@@ -1,0 +1,182 @@
+{
+  "study": "S06",
+  "synthetic": false,
+  "years": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "config": {
+    "timeframe": "15Min",
+    "ffill_bars": 2,
+    "window_sessions": 20,
+    "min_bar_share": 0.95,
+    "max_tau_frac": 0.5,
+    "center_m": true,
+    "open_long": -1.25,
+    "open_short": 1.25,
+    "close_long": -0.5,
+    "close_short": 0.75,
+    "size_per_stock": 0.01,
+    "max_positions": 100,
+    "initial_equity": 100000.0,
+    "fill_rule": "through",
+    "exit_patience": 4,
+    "hedge_timing": "fill_bar_mid",
+    "capture_mult": 1.0,
+    "cost_mult": 1.0,
+    "n_placebo": 200,
+    "seed": 42
+  },
+  "trading_start": "2020-02-03",
+  "n_placebo": 200,
+  "metrics": {
+    "primary": {
+      "total_return": -0.35803440614435744,
+      "sharpe": -1.6098179705172577,
+      "max_drawdown": 0.3584582298708495,
+      "mean_daily": -0.0002928916684766202,
+      "days": 1486.0,
+      "entry_fill_rate": 0.026794510934193893,
+      "trades": 35736.0,
+      "passive_exit_share": 0.0,
+      "capture": 10368.983224843898,
+      "market_cost": 14298.315339281875
+    },
+    "stress": {
+      "total_return": -0.4909613056664569,
+      "sharpe": -2.489331339152545,
+      "max_drawdown": 0.49031238139624045,
+      "mean_daily": -0.00044897545921200626,
+      "days": 1486.0,
+      "entry_fill_rate": 0.026609092353943237,
+      "trades": 35661.0,
+      "passive_exit_share": 0.0,
+      "capture": 4569.6612331219985,
+      "market_cost": 25405.169299766363
+    },
+    "optimistic": {
+      "total_return": -0.4458574154032313,
+      "sharpe": -2.1530002634695373,
+      "max_drawdown": 0.4455938444669646,
+      "mean_daily": -0.00039172425213432284,
+      "days": 1486.0,
+      "entry_fill_rate": 0.026695880085396907,
+      "trades": 35700.0,
+      "passive_exit_share": 0.0,
+      "capture": 9436.10057068901,
+      "market_cost": 13079.4711110136
+    },
+    "conservative": {
+      "total_return": -0.6175862237945778,
+      "sharpe": -3.487273944884418,
+      "max_drawdown": 0.6170633414353495,
+      "mean_daily": -0.0006410997778535751,
+      "days": 1486.0,
+      "entry_fill_rate": 0.025881133455290535,
+      "trades": 35355.0,
+      "passive_exit_share": 0.0,
+      "capture": 7496.939422273561,
+      "market_cost": 10253.826501730113
+    },
+    "touch": {
+      "total_return": -0.27835069062673323,
+      "sharpe": -1.1567941093841638,
+      "max_drawdown": 0.27963783042479606,
+      "mean_daily": -0.0002140395585193907,
+      "days": 1486.0,
+      "entry_fill_rate": 0.029555415405985806,
+      "trades": 37022.0,
+      "passive_exit_share": 0.0,
+      "capture": 12352.114291749731,
+      "market_cost": 16162.614254424381
+    },
+    "gross": {
+      "total_return": -0.23540425720903457,
+      "sharpe": -0.9552288499314017,
+      "max_drawdown": 0.23695691145191622,
+      "mean_daily": -0.00017523142256766158,
+      "days": 1486.0,
+      "entry_fill_rate": 0.026895290035897468,
+      "trades": 35783.0,
+      "passive_exit_share": 0.0,
+      "capture": 11422.378779093196,
+      "market_cost": 0.0
+    }
+  },
+  "trade_stats": {
+    "trades": 35736,
+    "trades_per_day": 24.032279757901815,
+    "mean_signal_bps": -12.161413738599476,
+    "capture_per_trade_bps": 3.801151897583114,
+    "market_cost_per_trade_bps": 5.241600579884366,
+    "median_bars": 51.0,
+    "passive_exit_share": 0.0,
+    "avg_open_positions": 65.35154992471053
+  },
+  "random_direction": {
+    "observed_gross": -31874.10849999998,
+    "p_upper": 1.0,
+    "percentile": 0.0,
+    "placebo_p95": 6930.557739999996
+  },
+  "placebo_timing_ranks": {
+    "total_return": {
+      "value": -0.35803440614435744,
+      "percentile": 40.5,
+      "p_upper": 0.5970149253731343,
+      "placebo_median": -0.355793571376248,
+      "placebo_p95": -0.3406164736235059
+    },
+    "sharpe": {
+      "value": -1.6098179705172577,
+      "percentile": 0.0,
+      "p_upper": 1.0,
+      "placebo_median": -1.3689739195538353,
+      "placebo_p95": -1.2897656372754736
+    }
+  },
+  "bootstrap": {
+    "10": [
+      -0.0002928916684766202,
+      -0.0004615582368592147,
+      -0.00013359222322666532
+    ],
+    "20": [
+      -0.0002928916684766202,
+      -0.0004521600121101712,
+      -0.00014565904949762038
+    ],
+    "40": [
+      -0.0002928916684766202,
+      -0.00038192196010504047,
+      -0.00014781942664193317
+    ]
+  },
+  "market": {
+    "alpha_daily": -0.00034705508744710937,
+    "alpha_p": 8.140108391433504e-06,
+    "beta": 0.0851902186831167,
+    "r2": 0.13128602723569882,
+    "n": 1486
+  },
+  "gates": {
+    "G1_bootstrap": false,
+    "G2_random_direction": false,
+    "G3_vs_random_timing": false,
+    "statistical_verdict": "NO_SIGNAL",
+    "economic_verdict": "NOT_PROFITABLE_AFTER_COSTS",
+    "verdict": "NO_EDGE",
+    "G4_stress": false,
+    "EXECUTION_ROBUST": false
+  },
+  "versions": {
+    "package": "0.1.0",
+    "alpaca": "0.3.0",
+    "s05": "0.1.0",
+    "s06": "0.1.0"
+  }
+}

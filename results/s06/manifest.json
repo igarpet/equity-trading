@@ -1,0 +1,9 @@
+{
+  "files": [
+    "daily_equity.csv",
+    "placebo_timing.csv",
+    "summary.json",
+    "trades.csv"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\s06\\alpaca0.3.0_s060.1.0"
+}
