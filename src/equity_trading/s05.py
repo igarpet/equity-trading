@@ -116,14 +116,19 @@ def first_decision_day(cfg: S05Config) -> int:
 
 # =================================================================== backtest
 def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.ndarray, cfg: S05Config,
-             mode: str = "strategy", entry_prob: float | None = None, seed: int = 0, record: bool = True) -> dict:
+             mode: str = "strategy", entry_prob: float | None = None, seed: int = 0, record: bool = True,
+             half_spread: np.ndarray | None = None) -> dict:
     """Bar-by-bar simulation. mode: 'strategy' | 'placebo_timing' (contrarian entries at random flat
-    tradable bars with |s| beyond the exit band, at probability entry_prob)."""
+    tradable bars with |s| beyond the exit band, at probability entry_prob).
+
+    half_spread: optional (T, n_columns) one-way cost per fill (fraction of price) for each bar and panel
+    column (S05b measured costs); multiplied by cfg.cost_mult. Default: cfg.half_spread_bps everywhere."""
     rng = np.random.default_rng(seed)
     r = log_returns(panel)
     o, c = panel.o, panel.c
     D, T, N = panel.n_days, len(panel.index), len(stock_cols)
-    hs = cfg.half_spread_bps * 1e-4 * cfg.cost_mult
+    hs_flat = cfg.half_spread_bps * 1e-4 * cfg.cost_mult
+    hs = hs_flat
     ncol = c.shape[1]
     hold = np.zeros(ncol)                  # shares per panel column (stocks and ETFs)
     cash = cfg.initial_equity
@@ -152,8 +157,9 @@ def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.nd
         m = delta != 0
         if m.any():
             d, p = delta[m], px[m]
-            cash -= np.sum(d * p * (1 + np.sign(d) * hs))
-            total_cost += np.sum(np.abs(d) * p * hs)
+            h = hs[m] if np.ndim(hs) else hs
+            cash -= np.sum(d * p * (1 + np.sign(d) * h))
+            total_cost += np.sum(np.abs(d) * p * h)
             hold[m] += d
 
     for t in range(first, D):
@@ -163,6 +169,8 @@ def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.nd
         X = np.zeros(N)
         a0, a1 = panel.day_start[t], panel.day_start[t + 1]
         for B in range(a0, a1):
+            if half_spread is not None:
+                hs = half_spread[B].astype(float) * cfg.cost_mult
             # ---------- fills at this bar's open
             if pend.any():
                 px_open = np.where(np.isfinite(o[B]), o[B], last_px)
@@ -278,9 +286,10 @@ def random_direction_test(gross_pnl: np.ndarray, n: int = 10_000, seed: int = 0)
             "percentile": float(100 * np.mean(dist < obs)), "placebo_p95": float(np.percentile(dist, 95))}
 
 
-def run_placebo(panel: Panel, params: dict, stock_cols, etf_cols, cfg: S05Config, entry_prob: float, seed: int, start) -> dict:
+def run_placebo(panel: Panel, params: dict, stock_cols, etf_cols, cfg: S05Config, entry_prob: float, seed: int, start,
+                half_spread: np.ndarray | None = None) -> dict:
     r = backtest(panel, params, stock_cols, etf_cols, cfg, mode="placebo_timing", entry_prob=entry_prob, seed=seed,
-                 record=False)
+                 record=False, half_spread=half_spread)
     return {"seed": seed, **perf_metrics(r["daily_equity"], cfg.initial_equity, start)}
 
 

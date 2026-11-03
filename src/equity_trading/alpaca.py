@@ -244,3 +244,93 @@ def synthetic_panel(universe: dict[str, list[str]], etfs: dict[str, str], years:
             idio = lfilter([1.0], [1.0, -phi], rng.standard_normal(n) * 0.0015 * u)
             out[s] = 100 * np.exp(rng.uniform(0.7, 1.3) * f + idio + rng.standard_normal(n) * 2e-4)
     return pd.DataFrame(out, index=idx)
+
+
+# ------------------------------------------------------------------ quotes (S05b cost sampling)
+QUOTES_URL = "https://data.alpaca.markets/v2/stocks/quotes"
+
+
+def fetch_quotes(symbols: list[str], start: str, end: str, feed: str = "sip", session=None,
+                 max_retries: int = 6) -> dict[str, pd.DataFrame]:
+    """Historical NBBO quotes for several symbols in [start, end) (RFC-3339).
+
+    Returns {symbol: DataFrame[t (UTC), bp, ap]} (bid, ask). Paginates like fetch_bars."""
+    import requests
+    session = session or requests.Session()
+    headers = _credentials()
+    params = {"symbols": ",".join(symbols), "start": start, "end": end, "feed": feed, "limit": 10000, "sort": "asc"}
+    out: dict[str, list] = {s: [] for s in symbols}
+    token = None
+    while True:
+        if token:
+            params["page_token"] = token
+        for attempt in range(max_retries):
+            _limiter.wait()
+            r = session.get(QUOTES_URL, headers=headers, params=params, timeout=60)
+            if r.status_code == 200:
+                break
+            if r.status_code in (429, 500, 502, 503, 504):
+                time.sleep(min(60, 2 ** attempt))
+                continue
+            raise RuntimeError(f"Alpaca quotes {r.status_code}: {r.text[:300]}")
+        else:
+            raise RuntimeError(f"Alpaca quotes: gave up after {max_retries} retries ({r.status_code}).")
+        js = r.json()
+        for sym, rows in (js.get("quotes") or {}).items():
+            out.setdefault(sym, []).extend((q.get("t"), q.get("bp"), q.get("ap")) for q in rows)
+        token = js.get("next_page_token")
+        if not token:
+            break
+    res = {}
+    for sym, rows in out.items():
+        df = pd.DataFrame(rows, columns=["t", "bp", "ap"])
+        df["t"] = pd.to_datetime(df["t"], utc=True)
+        res[sym] = df
+    return res
+
+
+def summarize_quotes(q: dict[str, pd.DataFrame], max_rel_spread: float = 0.02) -> pd.DataFrame:
+    """Per symbol: median relative half-spread (ap - bp) / (ap + bp) over valid quotes in the window
+    (0 < bp < ap, relative spread below max_rel_spread), and the number of valid quotes."""
+    rows = []
+    for sym, df in q.items():
+        if df.empty:
+            rows.append((sym, np.nan, 0))
+            continue
+        bp, ap = df["bp"].to_numpy(float), df["ap"].to_numpy(float)
+        ok = (bp > 0) & (ap > bp)
+        hs = (ap - bp) / (ap + bp)
+        ok &= 2 * hs < max_rel_spread
+        rows.append((sym, float(np.median(hs[ok])) if ok.any() else np.nan, int(ok.sum())))
+    return pd.DataFrame(rows, columns=["symbol", "half_spread", "n_quotes"])
+
+
+def sample_quote_spreads(symbols: list[str], session_date, slot_starts_utc: list, window_s: float = 3.0,
+                         chunk: int = 100, cache_dir=None, verbose: bool = False) -> pd.DataFrame:
+    """Quoted half-spreads for every symbol in the first `window_s` seconds after each bar start of
+    one session. Cached per session as <cache_dir>/<YYYY-MM-DD>.parquet (written only when complete)."""
+    import requests
+    p = None
+    if cache_dir is not None:
+        p = cache_dir / f"{pd.Timestamp(session_date).date()}.parquet"
+        if p.exists():
+            return pd.read_parquet(p)
+    sess = requests.Session()
+    parts = []
+    for slot, t0 in enumerate(slot_starts_utc):
+        t0 = pd.Timestamp(t0).tz_convert("UTC")
+        t1 = t0 + pd.Timedelta(seconds=window_s)
+        for i in range(0, len(symbols), chunk):
+            q = fetch_quotes(symbols[i:i + chunk], t0.isoformat().replace("+00:00", "Z"),
+                             t1.isoformat().replace("+00:00", "Z"), session=sess)
+            s = summarize_quotes(q)
+            s["slot"], s["date"] = slot, pd.Timestamp(session_date).date()
+            parts.append(s)
+        if verbose:
+            print(f"  {pd.Timestamp(session_date).date()} slot {slot + 1}/{len(slot_starts_utc)}", flush=True)
+    df = pd.concat(parts, ignore_index=True)
+    if p is not None:
+        tmp = p.with_suffix(".parquet.tmp")
+        df.to_parquet(tmp, index=False)
+        os.replace(tmp, p)
+    return df

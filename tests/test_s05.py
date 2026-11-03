@@ -92,3 +92,76 @@ def test_sector_map_covers_constituents():
     import pandas as pd
     c = pd.read_csv(Path(__file__).resolve().parents[1] / "reference" / "sp500_constituents_20260913.csv")
     assert set(c["GICS Sector"].unique()) <= set(s05.SECTOR_ETF)
+
+
+# ------------------------------------------------------------------ S05b: measured costs
+import pandas as pd  # noqa: E402
+
+from equity_trading import alpaca, s05b  # noqa: E402
+
+
+class _QResp:
+    def __init__(self, js):
+        self.status_code, self._js, self.text = 200, js, ""
+
+    def json(self):
+        return self._js
+
+
+class _QSession:
+    def __init__(self):
+        self.calls = []
+
+    def get(self, url, headers, params, timeout):
+        self.calls.append(dict(params))
+        if "page_token" not in params:
+            return _QResp({"quotes": {"AAA": [{"t": "2024-01-02T15:00:00Z", "bp": 99.99, "ap": 100.01}]},
+                           "next_page_token": "x"})
+        return _QResp({"quotes": {"AAA": [{"t": "2024-01-02T15:00:01Z", "bp": 99.98, "ap": 100.02},
+                                          {"t": "2024-01-02T15:00:02Z", "bp": 0, "ap": 100.0}],
+                                  "BBB": [{"t": "2024-01-02T15:00:01Z", "bp": 50.0, "ap": 49.0}]},
+                       "next_page_token": None})
+
+
+def test_fetch_and_summarize_quotes(monkeypatch):
+    monkeypatch.setenv("APCA_API_KEY_ID", "k")
+    monkeypatch.setenv("APCA_API_SECRET_KEY", "s")
+    monkeypatch.setattr(alpaca, "_limiter", alpaca._RateLimiter(10 ** 6))
+    sess = _QSession()
+    q = alpaca.fetch_quotes(["AAA", "BBB"], "2024-01-02T15:00:00Z", "2024-01-02T15:00:03Z", session=sess)
+    assert len(sess.calls) == 2 and sess.calls[0]["feed"] == "sip"
+    s = alpaca.summarize_quotes(q).set_index("symbol")
+    assert s.loc["AAA", "n_quotes"] == 2                                  # zero bid dropped
+    assert s.loc["AAA", "half_spread"] == pytest.approx(np.median([1e-4, 2e-4]), rel=1e-3)
+    assert s.loc["BBB", "n_quotes"] == 0 and np.isnan(s.loc["BBB", "half_spread"])   # crossed quote dropped
+
+
+def test_cost_model_and_array():
+    rows = []
+    for d in ["2024-03-01", "2025-03-03"]:
+        for slot in range(4):
+            prof = 2.0 if slot == 0 else 1.0
+            rows += [("AAA", 1e-4 * prof, 10, slot, pd.Timestamp(d).date()),
+                     ("BBB", 3e-4 * prof, 10, slot, pd.Timestamp(d).date())]
+    m = s05b.cost_model(pd.DataFrame(rows, columns=["symbol", "half_spread", "n_quotes", "slot", "date"]))
+    assert m["profile"][0] == pytest.approx(2.0) and m["profile"][1] == pytest.approx(1.0)
+    idx = pd.DatetimeIndex(pd.date_range("2024-03-01 09:30", periods=4, freq="15min", tz="America/New_York"))
+    H = s05b.cost_array(idx, np.array([0, 4]), ["AAA", "BBB", "CCC"], m)
+    assert H.shape == (4, 3)
+    assert H[1, 0] == pytest.approx(1e-4, rel=1e-5) and H[0, 0] == pytest.approx(2e-4, rel=1e-5)
+    assert H[1, 2] == pytest.approx(m["year_median"][2024], rel=1e-5)     # unknown symbol: year median
+
+
+def test_array_costs_match_flat_costs(run):
+    cfg, panel, sc, ec, P, bt = run
+    H = np.full(panel.c.shape, cfg.half_spread_bps * 1e-4, dtype=np.float32)
+    bt2 = s05.backtest(panel, P, sc, ec, cfg, half_spread=H)
+    assert bt2["final_equity"] == pytest.approx(bt["final_equity"], rel=1e-6)
+    bt3 = s05.backtest(panel, P, sc, ec, cfg, half_spread=H * 0.5)
+    assert bt3["final_equity"] > bt["final_equity"]
+
+
+def test_sample_sessions_deterministic():
+    a = s05b.sample_sessions([2024, 2025], 4, seed=1)
+    assert a == s05b.sample_sessions([2024, 2025], 4, seed=1) and len(a) == 8
+    assert len(s05b.slot_starts([2024], a[0])) in (14, 26)
