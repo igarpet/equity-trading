@@ -1,0 +1,12 @@
+{
+  "files": [
+    "cost_base_bps_symbol_year.csv",
+    "cost_profile_slot.csv",
+    "daily_equity.csv",
+    "placebo_timing.csv",
+    "quote_samples.csv.gz",
+    "summary.json",
+    "trades.csv"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\s05b\\alpaca0.3.0_s050.1.0_s05b0.1.0"
+}
