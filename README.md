@@ -22,7 +22,9 @@ Research rebuild of *Fractional Ornstein-Uhlenbeck Statistical Arbitrage with Sy
 | S05a | Avellaneda–Lee residual mean reversion: every S&P 500 stock vs its sector ETF, OU s-score rules, 1% per stock, ≤ 100 positions; random-direction and random-timing placebos | Alpaca SIP 2020–2025, 15m | Run c4d67fd (after C1): `NO_EDGE` — gross +54.6% (Sharpe 1.22), net +5.3% at 2 bps, −27% at 4 bps; timing p = 0.17 |
 | S05b | S05a with measured costs: SIP NBBO quote samples (24 sessions × every bar start) → per-symbol, per-year, intraday cost model | Alpaca SIP 2020–2025, 15m + quotes | Run c4d67fd (after C1): `NO_EDGE` — 13.0 bps cost vs 8.0 bps gross per trade; −25.3% |
 | S06 | S05a signal with passive limit-order stock execution (trade-through fills, market fallback after 4 bars), hedge-timing bracket | Alpaca SIP 2020–2025, 15m OHLC + S05b quotes | Run c4d67fd (after C1): `NO_EDGE` — adverse selection ≈ 25 bps per trade vs 8.3 bps captured; −43.8% (optimistic bound −29.6%) |
-| S07 | S05a signal as continuous contrarian weights (100% stock gross, sector-hedged) with a no-trade band traded to the edge; arms band 0.5× and 1.0× average position; shuffled-signal placebo | Alpaca SIP 2020–2025, 15m + S05b costs | Pre-registered; notebook ready, awaiting run |
+| S07 | S05a signal as continuous contrarian weights (100% stock gross, sector-hedged) with a no-trade band traded to the edge; arms band 0.5× and 1.0× average position; shuffled-signal placebo | Alpaca SIP 2020–2025, 15m + S05b costs | Run 8b38eef: `NO_EDGE` — gross Sharpe 1.07–1.12, beats shuffled signal p = 0.002; spread cost 5.9–11.8%/yr vs gross 4.3–5.2%/yr; net −10% (band 1.0), −34% (band 0.5) |
+| S05c | S05b with exits at the mean (s = 0) and beyond it (±0.5, ±1.0) | Alpaca SIP 2020–2025, 15m + S05b costs | Pre-registered; notebook ready, awaiting run |
+| S07b | S07 with bands 1.5× and 2.0× and no trading in the first 30 minutes | Alpaca SIP 2020–2025, 15m + S05b costs | Pre-registered; notebook ready, awaiting run |
 
 ## Setup
 

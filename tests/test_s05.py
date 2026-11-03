@@ -278,3 +278,18 @@ def test_s07_gates():
     sh = {"total_return": {"p_upper": 0.02}, "sharpe": {"p_upper": 0.03}}
     g = s07.gates(boot, sh, {"total_return": 0.1, "sharpe": 0.4}, {"total_return": 0.2})
     assert not g["G2_vs_shuffled_signal"] and g["verdict"] == "NO_EDGE"            # 0.03 > 0.025
+
+
+def test_s05_exit_levels_change_holding(run):
+    cfg, panel, sc, ec, P, bt = run
+    far = s05.backtest(panel, P, sc, ec, replace(cfg, close_long=1.0, close_short=-1.0))
+    assert far["trades"]["bars"].mean() > bt["trades"]["bars"].mean()
+    assert (np.sign(far["trades"]["s_entry"]) == -far["trades"]["side"]).all()
+
+
+def test_s07_skip_open_bars(run7):
+    cfg, panel, sc, ec, P, H = run7
+    none = s07.backtest(panel, P, sc, ec, H, replace(cfg, skip_open_bars=30), record=False)
+    assert none["total_traded"] == 0 and none["final_equity"] == pytest.approx(cfg.initial_equity)
+    sk = s07.backtest(panel, P, sc, ec, H, replace(cfg, skip_open_bars=2), record=False)
+    assert 0 < sk["total_traded"]

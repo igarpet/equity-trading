@@ -23,7 +23,7 @@ import pandas as pd
 from .s04 import Panel, perf_metrics
 from .s05 import log_returns
 
-S07_VERSION = "0.1.0"
+S07_VERSION = "0.1.1"
 
 
 @dataclass(frozen=True)
@@ -39,6 +39,7 @@ class S07Config:
     w_cap: float = 0.02                # max |weight| per stock
     band_mult: float = 1.0             # band = band_mult x gross / n_tradable
     etf_band: float = 0.001            # ETF hedge rebalanced when off by > 0.1% of equity
+    skip_open_bars: int = 0            # no trading at the opens of the first k bars of a session (S07b: 2 = 09:30-10:00)
     initial_equity: float = 100_000.0
     cost_mult: float = 1.0
     n_placebo: int = 1000
@@ -101,7 +102,7 @@ def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.nd
         band = cfg.band_mult * cfg.gross / n_valid
         for B in range(panel.day_start[t], panel.day_start[t + 1]):
             # ---------- fills at the open
-            if pend is not None:
+            if pend is not None and B - panel.day_start[t] >= cfg.skip_open_bars:
                 px = np.where(np.isfinite(o[B]), o[B], last_px)
                 ps = px[stock_cols]
                 okp_s = np.isfinite(ps) & (ps > 0)

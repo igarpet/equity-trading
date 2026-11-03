@@ -42,6 +42,8 @@ class S05Config:
     open_short: float = 1.25
     close_long: float = -0.50
     close_short: float = 0.75
+    elig_long: float = -0.50           # placebo-timing eligibility (fixed at the paper's exit band, so it does
+    elig_short: float = 0.75           # not move with the exit rule): flat stocks with s < elig_long or s > elig_short
     size_per_stock: float = 0.01       # stock-leg notional, fraction of equity
     max_positions: int = 100
     initial_equity: float = 100_000.0
@@ -227,10 +229,10 @@ def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.nd
             # entries
             flat = (side == 0) & (pend == 0) & vd & fin
             if mode == "placebo_timing":
-                elig = flat & ((s < cfg.close_long) | (s > cfg.close_short))
+                elig = flat & ((s < cfg.elig_long) | (s > cfg.elig_short))
                 sig_m = elig & (rng.random(N) < entry_prob)
             else:
-                elig = flat & ((s < cfg.close_long) | (s > cfg.close_short))
+                elig = flat & ((s < cfg.elig_long) | (s > cfg.elig_short))
                 sig_m = flat & ((s < cfg.open_long) | (s > cfg.open_short))
             elig_count += int(elig.sum())
             sig_count += int(sig_m.sum())
