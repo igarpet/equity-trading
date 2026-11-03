@@ -1,0 +1,176 @@
+{
+  "study": "S04",
+  "arm": "fixed60",
+  "synthetic": false,
+  "years": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "config": {
+    "timeframe": "15Min",
+    "ffill_bars": 2,
+    "corr_lookback_sessions": 20,
+    "corr_top_n": 10,
+    "corr_every": 5,
+    "pool_refreshes": 4,
+    "min_bar_share": 0.95,
+    "ref_sessions": 20,
+    "window_rule": "fixed",
+    "window_hl_mult": 5.0,
+    "fixed_window_sessions": 60,
+    "min_window_sessions": 5,
+    "max_window_sessions": 60,
+    "adf_lags": 1,
+    "fdr_q": 0.01,
+    "remove_p": 0.1,
+    "streak": 3,
+    "entry_z": 1.5,
+    "tp_z": 0.5,
+    "stop_z": 3.0,
+    "time_stop_hl": 3.0,
+    "gross_per_pair": 0.04,
+    "max_pairs": 15,
+    "initial_equity": 100000.0,
+    "cost_filter_mult": 2.0,
+    "cost_model": "flat",
+    "flat_half_spread_bps": 2.0,
+    "spread_lookback_sessions": 20,
+    "min_half_spread_bps": 1.0,
+    "cost_mult": 1.0,
+    "n_placebo": 1000,
+    "seed": 42
+  },
+  "trading_start": "2020-04-01",
+  "n_placebo": 1000,
+  "spells": {
+    "spells": 434,
+    "distinct_pairs": 426,
+    "median_spell_sessions": 24.0,
+    "mean_tradable_per_day": 9.356107660455487,
+    "days_with_none": 388
+  },
+  "metrics": {
+    "1x cost": {
+      "total_return": 0.03294449201320204,
+      "sharpe": 0.5887226908968045,
+      "max_drawdown": 0.015825865510411763,
+      "mean_daily": 2.309729099682935e-05,
+      "days": 1445.0
+    },
+    "2x cost": {
+      "total_return": 0.0010215660540064952,
+      "sharpe": 0.0426666305209549,
+      "max_drawdown": 0.02480349975281848,
+      "mean_daily": 1.6883781701248931e-06,
+      "days": 1445.0
+    },
+    "0x cost": {
+      "total_return": 0.06759466400000047,
+      "sharpe": 1.2288955610346632,
+      "max_drawdown": 0.012132828036265475,
+      "mean_daily": 4.613245594624154e-05,
+      "days": 1445.0
+    }
+  },
+  "trades": {
+    "trades": 2199,
+    "win_rate": 0.3938153706230105,
+    "mean_trade_ret": 0.00038247955261198175,
+    "median_trade_ret": -0.0009388969744236187,
+    "mean_bars": 32.374261027739884,
+    "total_pnl": 3294.4492013203944,
+    "total_cost": 3525.41899868,
+    "gross_pnl": 6819.868200000394,
+    "cost_share_of_gross": 0.05186985506939668,
+    "exit_stop": 0.42837653478854026,
+    "exit_time": 0.3246930422919509,
+    "exit_tp": 0.2132787630741246,
+    "exit_break": 0.03319690768531151,
+    "exit_end": 0.00045475216007276033
+  },
+  "calibration": {
+    "resolved": 1411,
+    "censored_share": 0.35834470213733516,
+    "mean_predicted": 0.6362557130384925,
+    "realized": 0.332388377037562,
+    "gap_pp": -30.386733600093045,
+    "brier": 0.26686173709810496
+  },
+  "market": {
+    "alpha_daily": 3.181881351014965e-05,
+    "alpha_p": 0.3317202273169779,
+    "beta": 0.010097908964546402,
+    "r2": 0.016598107413977714,
+    "n": 789
+  },
+  "bootstrap": {
+    "10": [
+      2.309729099682935e-05,
+      -1.3198288624930033e-05,
+      5.7815388778102574e-05
+    ],
+    "20": [
+      2.309729099682935e-05,
+      -1.1942128903950717e-05,
+      5.187017163490096e-05
+    ],
+    "40": [
+      2.309729099682935e-05,
+      -8.502974299046051e-06,
+      4.675753884874826e-05
+    ]
+  },
+  "placebo_ranks": {
+    "placebo_pairs": {
+      "total_return": {
+        "value": 0.03294449201320204,
+        "percentile": 85.0,
+        "p_upper": 0.15084915084915085,
+        "placebo_median": 0.006264156244902952,
+        "placebo_p95": 0.05195431537665154
+      },
+      "sharpe": {
+        "value": 0.5887226908968045,
+        "percentile": 92.10000000000001,
+        "p_upper": 0.07992007992007992,
+        "placebo_median": 0.09130826110002485,
+        "placebo_p95": 0.6860840730862913
+      }
+    },
+    "placebo_timing": {
+      "total_return": {
+        "value": 0.03294449201320204,
+        "percentile": 63.2,
+        "p_upper": 0.36863136863136864,
+        "placebo_median": 0.02920910094480722,
+        "placebo_p95": 0.04811439531371513
+      },
+      "sharpe": {
+        "value": 0.5887226908968045,
+        "percentile": 72.8,
+        "p_upper": 0.2727272727272727,
+        "placebo_median": 0.4873656054678198,
+        "placebo_p95": 0.7706530368640271
+      }
+    }
+  },
+  "gates": {
+    "G1_bootstrap": false,
+    "G2_vs_random_pairs": false,
+    "G3_vs_random_timing": false,
+    "G4_double_cost": true,
+    "statistical_verdict": "NO_SIGNAL",
+    "economic_verdict": "PROFITABLE_AFTER_COSTS",
+    "prospective_verdict": "PENDING_2026_HOLDOUT",
+    "verdict": "NO_EDGE"
+  },
+  "versions": {
+    "package": "0.1.0",
+    "alpaca": "0.3.0",
+    "s04": "0.2.0"
+  }
+}

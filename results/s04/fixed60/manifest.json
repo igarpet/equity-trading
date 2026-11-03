@@ -1,0 +1,10 @@
+{
+  "files": [
+    "daily_equity.csv",
+    "placebos.csv",
+    "spells.csv",
+    "summary.json",
+    "trades.csv"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\s04\\fixed60_alpaca0.3.0_s040.1.1"
+}
