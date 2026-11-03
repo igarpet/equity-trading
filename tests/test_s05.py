@@ -115,7 +115,8 @@ class _QSession:
     def get(self, url, headers, params, timeout):
         self.calls.append(dict(params))
         if "page_token" not in params:
-            return _QResp({"quotes": {"AAA": [{"t": "2024-01-02T15:00:00Z", "bp": 99.99, "ap": 100.01}]},
+            return _QResp({"quotes": {"AAA": [{"t": "2024-01-02T15:00:00Z", "bp": 99.99, "ap": 100.01},
+                                              {"t": "2024-01-02T15:00:00.001234567Z", "bp": 99.99, "ap": 100.01}]},
                            "next_page_token": "x"})
         return _QResp({"quotes": {"AAA": [{"t": "2024-01-02T15:00:01Z", "bp": 99.98, "ap": 100.02},
                                           {"t": "2024-01-02T15:00:02Z", "bp": 0, "ap": 100.0}],
@@ -131,8 +132,8 @@ def test_fetch_and_summarize_quotes(monkeypatch):
     q = alpaca.fetch_quotes(["AAA", "BBB"], "2024-01-02T15:00:00Z", "2024-01-02T15:00:03Z", session=sess)
     assert len(sess.calls) == 2 and sess.calls[0]["feed"] == "sip"
     s = alpaca.summarize_quotes(q).set_index("symbol")
-    assert s.loc["AAA", "n_quotes"] == 2                                  # zero bid dropped
-    assert s.loc["AAA", "half_spread"] == pytest.approx(np.median([1e-4, 2e-4]), rel=1e-3)
+    assert s.loc["AAA", "n_quotes"] == 3                                  # zero bid dropped; mixed stamp precision parsed
+    assert s.loc["AAA", "half_spread"] == pytest.approx(1e-4, rel=1e-3)
     assert s.loc["BBB", "n_quotes"] == 0 and np.isnan(s.loc["BBB", "half_spread"])   # crossed quote dropped
 
 

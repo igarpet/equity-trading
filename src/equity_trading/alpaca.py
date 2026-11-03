@@ -284,7 +284,7 @@ def fetch_quotes(symbols: list[str], start: str, end: str, feed: str = "sip", se
     res = {}
     for sym, rows in out.items():
         df = pd.DataFrame(rows, columns=["t", "bp", "ap"])
-        df["t"] = pd.to_datetime(df["t"], utc=True)
+        df["t"] = pd.to_datetime(df["t"], utc=True, format="ISO8601")  # quote stamps mix whole and fractional seconds
         res[sym] = df
     return res
 
