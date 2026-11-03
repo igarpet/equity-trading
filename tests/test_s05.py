@@ -166,3 +166,56 @@ def test_sample_sessions_deterministic():
     a = s05b.sample_sessions([2024, 2025], 4, seed=1)
     assert a == s05b.sample_sessions([2024, 2025], 4, seed=1) and len(a) == 8
     assert len(s05b.slot_starts([2024], a[0])) in (14, 26)
+
+
+# ------------------------------------------------------------------ S06: passive execution
+from equity_trading import s06  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def run6():
+    cfg = s06.S06Config()
+    panel, stocks = s04.synthetic_ohlc_panel([2025])
+    sc = np.array([panel.symbols.index(s) for s in stocks])
+    sect = {s: k for k, v in UNIVERSE_01.items() for s in v}
+    ec = np.array([panel.symbols.index(SECTOR_ETF_01[sect[s]]) for s in stocks])
+    P = s05.estimate_all(panel, sc, ec, cfg.s05(), s06.first_decision_day(cfg))
+    H = np.full(panel.c.shape, 3e-4)
+    return cfg, panel, sc, ec, P, H
+
+
+@pytest.mark.parametrize("ht", ["fill_bar_mid", "fill_bar_open", "next_open"])
+def test_s06_accounting_identity(run6, ht):
+    cfg, panel, sc, ec, P, H = run6
+    bt = s06.backtest(panel, P, sc, ec, H, replace(cfg, hedge_timing=ht))
+    tr = bt["trades"]
+    assert len(tr) > 50 and bt["n_open"].max() <= cfg.max_positions
+    assert bt["final_equity"] - cfg.initial_equity == pytest.approx(
+        tr["signal_pnl"].sum() + bt["total_capture"] - bt["total_cost"], abs=1e-4)
+    assert bt["total_entry_fills"] == len(tr)
+    assert (tr["notional"] > 0).all()
+
+
+def test_s06_fill_rules_and_stress(run6):
+    cfg, panel, sc, ec, P, H = run6
+    th = s06.backtest(panel, P, sc, ec, H, cfg, record=False)
+    to = s06.backtest(panel, P, sc, ec, H, replace(cfg, fill_rule="touch"), record=False)
+    assert to["total_entry_fills"] / to["total_entry_orders"] > th["total_entry_fills"] / th["total_entry_orders"]
+    st = s06.backtest(panel, P, sc, ec, H, replace(cfg, capture_mult=0.5, cost_mult=2.0), record=False)
+    assert st["total_capture"] < th["total_capture"] and st["total_cost"] > th["total_cost"]
+
+
+def test_s06_no_fill_without_traded_bars(run6):
+    cfg, panel, sc, ec, P, H = run6
+    import copy
+    p2 = copy.copy(panel)
+    p2.h = np.full_like(panel.h, np.nan)
+    p2.l = np.full_like(panel.l, np.nan)
+    bt = s06.backtest(p2, P, sc, ec, H, cfg, record=False)
+    assert bt["total_entry_fills"] == 0 and bt["final_equity"] == pytest.approx(cfg.initial_equity)
+
+
+def test_s06_placebo_seeded(run6):
+    cfg, panel, sc, ec, P, H = run6
+    a = s06.run_placebo(panel, P, sc, ec, H, cfg, 0.05, 3, pd.Timestamp("2025-02-01"))
+    assert a == s06.run_placebo(panel, P, sc, ec, H, cfg, 0.05, 3, pd.Timestamp("2025-02-01"))

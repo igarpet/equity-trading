@@ -88,6 +88,8 @@ class Panel:
     day_start: np.ndarray        # (D + 1,) bar offset of each session
     days: np.ndarray             # (D,) session dates
     s2_daily: np.ndarray         # (D, N) Abdi-Ranaldo squared-spread estimate per session (NaN if none)
+    h: np.ndarray | None = None  # (T, N) raw high of real bars only (NaN where no bar; never forward-filled)
+    l: np.ndarray | None = None  # (T, N) raw low, same convention
 
     @property
     def n_days(self) -> int:
@@ -140,7 +142,8 @@ def _assemble(index: pd.DatetimeIndex, symbols, o, c, h, l, ffill_bars: int) -> 
     prev[day_start[:-1]] = np.nan                       # never carry yesterday's close into today's open
     of = np.where(np.isfinite(o), o, prev)
     of = np.where(np.isfinite(cf), of, np.nan)
-    return Panel(index=index, symbols=list(symbols), o=of, c=cf, day_start=day_start, days=days, s2_daily=s2)
+    return Panel(index=index, symbols=list(symbols), o=of, c=cf, day_start=day_start, days=days, s2_daily=s2,
+                 h=np.asarray(h, dtype=float), l=np.asarray(l, dtype=float))
 
 
 def bar_grid(years: list[int], minutes: int) -> pd.DatetimeIndex:
