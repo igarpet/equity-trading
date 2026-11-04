@@ -14,6 +14,16 @@ One folder per research branch, matching `discussions/`. Notebook file names kee
 |---|---|
 | [Pairs_Cointegration](./Pairs_Cointegration/) | S01–S04: intraday Hurst null, cointegration base rate, thesis pair discovery (EG, Johansen, rolling, clustering), dynamic OU pairs backtest. |
 | [Residual_Reversion](./Residual_Reversion/) | S05a–S09: Avellaneda–Lee stock-vs-sector-ETF residuals: measured costs, exit/entry rules, passive execution, continuous weights, s-score diagnostics. |
+| [Short_Term_Momentum](./Short_Term_Momentum/) | Paper P1: Medhat, M. & Schmeling, M. — Does the S05 residual reversal depend on turnover? Planned. |
+| [Liquidity_Provision](./Liquidity_Provision/) | Paper P2: Nagel, S. — Is the residual reversal edge larger in high-volatility regimes, enough to clear costs? Planned. |
+| [Intraday_Periodicity](./Intraday_Periodicity/) | Paper P3: Heston, S. L., Korajczyk, R. A. & Sadka, R. — Does same-slot periodicity exist on our 15m/30m SIP bars 2020–2025, and does it interact with (or contaminate) the residual reversal signal, especially at the open? Planned. |
+| [News_Filtered_Reversal](./News_Filtered_Reversal/) | Paper P4: Da, Z., Liu, Q. & Schaumburg, E. — Does removing news-driven residual moves (earnings dates, news flow) leave a stronger reversal? Planned. |
+| [Dynamic_Trading_Costs](./Dynamic_Trading_Costs/) | Paper P5: Gârleanu, N. & Pedersen, L. H. — Successor to S07: does the optimal partial-adjustment rule, with our measured S05b costs, turn the gross residual signal into a net positive? Planned. |
+| [Deep_Statistical_Arbitrage](./Deep_Statistical_Arbitrage/) | Paper P6: Guijarro-Ordonez, J., Pelger, M. & Zanotti, G. — Do richer factor residuals and a learned policy produce a gross edge larger than the sector-ETF residual, after measured costs? Planned. |
+| [Rank_Space](./Rank_Space/) | Paper P7: Li, Y.-F. & Papanicolaou, G. — Does rank-space mean reversion survive our measured costs (≈ 13 bps round trip in S05b), not 2 bps? Planned. |
+| [OU_Optimal_Thresholds](./OU_Optimal_Thresholds/) | Paper P8: Bertram, W. K. — Do model-optimal thresholds beat the S05c/S05d rules out of sample? Planned. |
+
+Paper-testing order (Iván, 2026-11-04): P1 → P2 → P3 → P4 → P5 → P6 → P7 → P8. Each paper is its own branch; it may use the shared S05 engine and the S05b cost model (documented in its protocol), but not other branches' thresholds or conclusions.
 
 ## Mapping from the old layout (restructured 2026-11-04)
 
