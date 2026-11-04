@@ -347,3 +347,51 @@ def test_s08_helpers():
     assert s08.ou_hit_zero_prob(0.0) == pytest.approx(1.0) and s08.ou_hit_zero_prob(4.0) == pytest.approx(0.0)
     ex = s08.normal_exceedance()
     assert ex[">3"] == pytest.approx(0.0027, abs=1e-4)
+
+
+# ------------------------------------------------------------------ S09
+from equity_trading import s09  # noqa: E402
+
+
+def _simulate_switching(n=4000, L=26, k=0.08, sd=0.2, pRR=0.95, pSS=0.9, seed=1):
+    rng = np.random.default_rng(seed)
+    s = np.zeros((n, L)); st = np.zeros((n, L), int)
+    s[:, 0] = rng.standard_normal(n) * 2
+    st[:, 0] = rng.random(n) < 0.33
+    for t in range(1, L):
+        stay = np.where(st[:, t - 1] == 0, rng.random(n) < pRR, rng.random(n) < pSS)
+        st[:, t] = np.where(stay, st[:, t - 1], 1 - st[:, t - 1])
+        pull = np.where(st[:, t] == 0, -k * s[:, t - 1], 0.0)
+        s[:, t] = s[:, t - 1] + pull + sd * rng.standard_normal(n)
+    return s, st
+
+
+def test_s09_switching_recovers_parameters():
+    s, st = _simulate_switching()
+    fit = s09.fit_switching(s[:, :-1], np.diff(s, axis=1))
+    assert fit["k"] == pytest.approx(0.08, rel=0.25)
+    assert fit["sd"] == pytest.approx(0.2, rel=0.1)
+    assert fit["P"][0, 0] > 0.85
+
+
+def test_s09_filter_separates_states():
+    s, st = _simulate_switching(n=3000, seed=2)
+    fit = s09.fit_switching(s[:, :-1], np.diff(s, axis=1))
+    T = s.T                                                           # bars x "stocks", one session
+    p = s09.filter_prob_R(T, np.array([0, T.shape[0]]), fit)
+    late = slice(15, 26)
+    assert np.nanmean(p[late][st.T[late] == 0]) > np.nanmean(p[late][st.T[late] == 1]) + 0.1
+
+
+def test_s09_har_fit_and_lambda():
+    rng = np.random.default_rng(0)
+    D, N = 300, 30
+    lv = np.zeros((D, N))
+    for d in range(1, D):
+        lv[d] = 0.8 * lv[d - 1] + 0.3 * rng.standard_normal(N)
+    rv = np.exp(lv - 9)
+    F = s09.har_features(rv)
+    fit = s09.fit_har(F, np.arange(25, 200))
+    assert fit["r2"] > 0.3 and fit["coef"][1] > 0
+    lam = s09.har_lambda(F, fit)
+    assert np.isnan(lam[0]).all() and np.nanmin(lam) >= 0.25 and np.nanmax(lam) <= 4.0
