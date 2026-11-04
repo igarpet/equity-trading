@@ -1,0 +1,129 @@
+# S04: Dynamic OU pairs backtest on 15-minute bars (stocks, long/short)
+
+| | |
+|---|---|
+| **Status** | Pre-registration, 2026-11-02, written before any S04 result exists |
+| **Notebook** | `notebooks/Pairs_Cointegration/04_dynamic_ou_pairs_backtest.ipynb` |
+| **Engine** | `src/equity_trading/s04.py` (tests: `tests/test_s04.py`) |
+| **Data** | Alpaca SIP bars, `adjustment=all`, regular session, 15Min, 2020-01-01 → 2025-12-31 (same window as S03). 2026 sealed as the second holdout. |
+| **Universe** | `src/equity_trading/reference/sp500_constituents_20260913.csv`; SPY is downloaded as the benchmark only (never traded). |
+| **Arms** | `ARM = "hl5"`, `"fixed60"` and `"fixed120"` (amendment A2), run once each. Outputs go to `notebooks/Pairs_Cointegration/04/<ARM>/`. |
+
+## 0. Prior evidence, stated before the run
+
+- **S02 and S03:** no cointegration selection excess over a random-pair null at intraday bars, with frozen formation parameters.
+- **S04 asks a different question:** can daily re-estimation with a dynamic pair list extract a tradable signal anyway?
+- **Window power.** On the synthetic panel, where same-sector pairs are cointegrated by construction with half-lives of 1–5 sessions, the share of pairs reaching Engle–Granger p ≤ 1% is:
+
+  | Window (sessions) | Cointegrated pairs | Cross-sector pairs (null) |
+  |---|---|---|
+  | 5 | 1.6% | 1.0% |
+  | 10 | 1.4% | 1.5% |
+  | 20 | 4.5% | 1.2% |
+  | 40 | 22% | 3.5% |
+  | 60 | 52% | 3.2% |
+
+  A window of 5 × half-life is about 5–25 sessions for these pairs, so `hl5` is expected to select close to the null rate. `fixed60` is the arm with power. This was found while building the engine and is recorded here before any real-data run.
+
+## 1. Pipeline
+
+All decisions use data up to the close of decision day *e* and take effect on *e + 1*.
+
+| Step | Rule |
+|---|---|
+| Panel | Exchange-calendar 15m grid. Close forward-filled within a session for up to 2 bars. A missing open is filled with the previous close of the same session. No full-sample availability filter: a pair is tested on a day only if both legs have ≥ 95% of bars in the window. |
+| Costs | **Flat 2 bps one way** on every fill (amendment A1 below). Originally ½ × the Abdi–Ranaldo (2017) spread from 15m OHLC over sessions *d*−20 … *d*−1, floored at 1 bp. No commissions, borrow fees or dividends. Every stock is assumed shortable. |
+| Candidates | Every 5 sessions: each stock's top-10 signed correlations of 15m log returns over the trailing 20 sessions, excluding the overnight bar. Orientation is alphabetical *y*. The pool on day *e* is the union of the last 4 refreshes. |
+| Daily test | Half-life from an AR(1) fit on an OLS spread over a 20-session reference window. Engle–Granger with a fixed 1-lag ADF and MacKinnon p-value (N = 2) over the test window. `hl5`: clamp(5 × HL, 5, 60) sessions. `fixed60`: 60 sessions. BH-FDR across each day's batch. |
+| Pass / fail | **Pass:** BH-adjusted p ≤ 1%, β > 0, valid half-life, and the window holds ≥ 5 half-lives. **Fail:** raw p > 10%, β ≤ 0, invalid half-life, or window < 5 half-lives. Anything else is neutral. |
+| Hysteresis | **Tradable** after 3 consecutive passes. **Removed** after 3 consecutive fails. A day with no test counts as a fail. Neutral resets both streaks. Tradable pairs keep being re-tested after they leave the correlation pool. |
+| Entry | Signal at a bar close, fill at the next bar's open. Requires: pair tradable and flat; 1.5 ≤ \|z\| < 3; and (1.5 − 0.5)·sd ≥ 2 × round-trip cost. z uses that day's parameters (estimated at the previous close). |
+| Sizing | 4% of equity gross per pair, split by β (notional on *x* = β̂ × notional on *y*), integer shares. At most 15 open pairs. When more pairs signal than there are free slots, shortest half-life first. |
+| Exit | First of: \|z\| ≤ 0.5 (take profit), \|z\| ≥ 3 (stop), 3 × half-life bars held (time), pair removed (break). Entry parameters are frozen for the life of the position. Exits also fill at the next open. Liquidation at the last close of 2025. |
+| Capital | $100,000. No leverage beyond about 60% gross. Cash earns nothing. |
+
+## 2. Evaluation (pre-registered)
+
+**Runs:**
+- Strategy at 1× cost (primary).
+- Strategy at 2× cost and at 0× cost (gross).
+
+**Placebos (1,000 each, same engine, costs and caps):**
+- **P-pairs:** every tradable spell keeps its calendar, but its pair is replaced by a random pool pair with a valid OU shape that day (β > 0, valid half-life), without the significance or hysteresis requirement.
+- **P-timing:** same pairs and spells. Contrarian entries at random flat bars with 0.5 < \|z\| < 3, at the strategy's own entry rate.
+
+**Gates:**
+
+| Gate | Condition |
+|---|---|
+| **G1 bootstrap** | Moving-block bootstrap (10,000 draws) 95% CI of mean daily net return > 0 for blocks of 10, 20 and 40 days |
+| **G2 vs random pairs** | Total return and Sharpe each have upper-tail p ≤ 0.05 against P-pairs |
+| **G3 vs random timing** | Total return and Sharpe each have upper-tail p ≤ 0.05 against P-timing |
+| **G4 double cost** | Total return > 0 and Sharpe > 0 at 2× cost |
+
+**Verdicts, reported separately:**
+
+| Kind | Verdict |
+|---|---|
+| Statistical | `SIGNAL` if G1, G2 and G3 pass; `PARTIAL` if some pass; `NO_SIGNAL` if none |
+| Economic | `PROFITABLE_AFTER_COSTS` if net total return > 0 and G4 passes |
+| Prospective | `PENDING_2026_HOLDOUT`, always for this study |
+| Overall | `EDGE_CANDIDATE` only if statistical = `SIGNAL` and economic = profitable; otherwise `NO_EDGE` |
+
+**Reported only:**
+- Market beta and alpha vs SPY: daily OLS with 5-lag HAC standard errors, on raw returns since no risk-free series is loaded.
+- Max drawdown, exit-reason shares, holding time, cost share of gross P&L.
+- Tradable-pair count over time, number of spells and their durations.
+- **Calibration:** OU probability of reaching \|z\| = 0.5 before 3 from the entry z (scale-function formula, independent of κ) vs the realized take-profit share, on trades that ended at tp or stop. Trades ended by time, break or end are censored and their share is reported.
+
+## 2a. Amendments
+
+**A1 (2026-11-03, after the first `hl5` run, commit 5bc38f1).** Costs changed from Abdi–Ranaldo to a flat 2 bps one way.
+- **Reason:** on 15m bars the estimator gave a median one-way cost of 35.6 bps (10th percentile 24 bps). That is roughly an order of magnitude above quoted spreads on S&P 500 names; the within-bar range is mostly volatility, not spread.
+- **Effect on that run:** the entry filter blocked almost every signal (1 trade), and placebos were charged about 1.4% per round trip.
+- **Status:** this corrects an implausible input. It was not chosen by comparing performance. The 2× (4 bps) and 0× runs and G4 are unchanged. The Abdi–Ranaldo estimate is still plotted as a diagnostic.
+- **Also from that run:** `hl5` passed raw p ≤ 1% on 2.1% of pair-days, BH on 0.08%, with 125 spells (median 4 sessions) and 1 trade, as the window-power check predicted.
+- **Scope:** both arms are run with A1. Gates and every other rule are unchanged.
+
+**A2 (2026-11-03, after the `fixed60` run, commit fec1b00).** Third arm, `fixed120`: 120-session test window (`max_window_sessions = 120`).
+- **Motivation:** the synthetic power check rose steeply from 20 to 60 sessions. `fixed60` averaged only 9.4 tradable pairs per day, with none on 388 days.
+- **Consequence:** the window needs 120 sessions of history, so trading starts about 60 sessions later than in the other arms, missing most of March–June 2020. For a like-for-like comparison, the notebook also reports the other arms' metrics rebased to this arm's start (reported only).
+- **Status:** chosen after seeing `fixed60`, so it is exploratory. Gates and all other rules are unchanged.
+- **Data policy unchanged:** 2020–2025 only, 2026 sealed.
+
+**`fixed60` result (commit fec1b00, for the record):**
+- +3.3% net over 5.75 years, Sharpe 0.59.
+- 77% of the profit came from 2020.
+- Vs random pairs: 85th percentile (p = 0.15). Vs random timing: 63rd percentile.
+- Verdict: `NO_EDGE`.
+
+## 3. Known limitations
+
+- **Survivorship:** current-snapshot universe, as in the thesis and S03.
+- **Short side:** shorting is free and unconstrained. This is optimistic.
+- **Costs are assumed:** flat 2 bps one way, not measured from quotes, and no market impact. It is optimistic for the least liquid names and wide-spread periods (e.g. March 2020). At 4% gross per pair, impact is small for S&P 500 names. Validating it needs SIP quote samples.
+- **Not untouched data:** 2020–2025 was already used in S02/S03 for pair discovery. This study is development; the 2026 holdout is the confirmation.
+- **Optimistic CIs:** shared legs across pairs make the bootstrap CIs optimistic. The placebo gates are the main control.
+- **Sticky re-testing:** once tradable, a pair is tested every day, while other pairs are tested only while in the pool. P-pairs uses the same spell calendar, so this does not favour the strategy against it.
+
+## Run
+
+```bash
+python -m pytest -q
+# arm 1 (set ARM = "hl5" in the first code cell), then arm 2 (ARM = "fixed60")
+jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks/Pairs_Cointegration/04_dynamic_ou_pairs_backtest.ipynb
+```
+
+**Download:** S03 cached 30Min for the full universe. If the 15Min cache only covers the 44 S02 symbols, the first cell downloads the rest. That takes roughly 7 h at the free-plan rate limit and resumes if interrupted.
+
+**Compute:**
+- Daily tests: about 1,500 days × about 5–10k pool pairs, roughly 20–60 min on 8 cores. Cached per 20-day block in `<EQUITY_TRADING_DIR>/EquityTrading/results/s04/<ARM>/`.
+- One backtest takes seconds. 2 × 1,000 placebos take roughly 1–2 h on 8 cores. Set `N_PLACEBO` lower for a first pass; the gates require 1,000.
+
+## Correction C1 (2026-11-03): panel field-order bug, all earlier real-data results void
+
+- **The bug:** `s04.load_panel` passed bar fields to the panel builder as (open, high, low, close), but the builder expected (open, close, high, low). On real data the panel's close was the bar **high**, its high was the **low**, and its low was the **close**. Opens were correct. The synthetic panel was built correctly, so tests did not catch it.
+- **Scope:** every real-data run of S04, S05a, S05b and S06 before this correction (fixed in the commit that adds this note). Signals, estimates and marks used bar highs. The S04 Abdi–Ranaldo estimate (36 bps, the reason for amendment A1) was computed from scrambled fields. S02 and S03 used a different, correct loader and are not affected. The S05b quote samples are not affected.
+- **Fix:** fields passed by name. A regression test checks the OHLC fields stay distinct. One shared panel cache is now keyed on `PANEL_VERSION` 0.2.0, and every derived cache is keyed on it too, so no stale panel or result can be reused.
+- **Status:** the pre-registered rules are unchanged; only the data were wrong. The earlier results in `results/` stay in git history and must not be cited. Re-runs replace them.
+- **Amendment A1:** flat 2 bps one-way cost stays. It is consistent with the S05b measured median of about 2.7 bps per side, but its stated reason (the 36 bps estimate) was an artifact of this bug.

@@ -314,7 +314,7 @@ def run_placebo(panel: Panel, params: dict, stock_cols, etf_cols, cfg: S05Config
 
 
 def gates(boot: dict, rand_dir: dict, pl_timing: dict, cost2: dict, base: dict, alpha: float = 0.05) -> dict:
-    """Pre-registered gates (studies/S05a_README.md)."""
+    """Pre-registered gates (discussions/Residual_Reversion/001_claude_s05a_avellaneda_lee_etf.md)."""
     g1 = all(v[1] > 0 for v in boot.values())
     g2 = rand_dir["p_upper"] <= alpha
     g3 = pl_timing["total_return"]["p_upper"] <= alpha and pl_timing["sharpe"]["p_upper"] <= alpha

@@ -178,7 +178,7 @@ def run_placebo(panel, params, stock_cols, etf_cols, half_spread, cfg: S07Config
 
 
 def gates(boot: dict, shuffle: dict, cost2: dict, base: dict, alpha: float = 0.025) -> dict:
-    """Pre-registered gates (studies/S07_README.md); alpha = 0.05 / 2 arms."""
+    """Pre-registered gates (discussions/Residual_Reversion/006_claude_s07_continuous_weights.md); alpha = 0.05 / 2 arms."""
     g1 = all(v[1] > 0 for v in boot.values())
     g2 = shuffle["total_return"]["p_upper"] <= alpha and shuffle["sharpe"]["p_upper"] <= alpha
     g3 = cost2["total_return"] > 0 and cost2["sharpe"] > 0

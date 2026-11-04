@@ -782,7 +782,7 @@ def placebo_rank(value: float, dist: np.ndarray) -> dict:
 
 
 def gates(boot: dict, pl_pairs: dict, pl_timing: dict, cost2: dict, base: dict, alpha: float = 0.05) -> dict:
-    """Pre-registered gates (studies/S04_README.md)."""
+    """Pre-registered gates (discussions/Pairs_Cointegration/004_claude_s04_dynamic_ou_pairs_backtest.md)."""
     g1 = all(v[1] > 0 for v in boot.values())
     g2 = pl_pairs["total_return"]["p_upper"] <= alpha and pl_pairs["sharpe"]["p_upper"] <= alpha
     g3 = pl_timing["total_return"]["p_upper"] <= alpha and pl_timing["sharpe"]["p_upper"] <= alpha

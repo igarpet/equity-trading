@@ -90,7 +90,7 @@ def test_costs_and_placebo(run):
 
 def test_sector_map_covers_constituents():
     import pandas as pd
-    c = pd.read_csv(Path(__file__).resolve().parents[1] / "reference" / "sp500_constituents_20260913.csv")
+    c = pd.read_csv(Path(__file__).resolve().parents[1] / "src" / "equity_trading" / "reference" / "sp500_constituents_20260913.csv")
     assert set(c["GICS Sector"].unique()) <= set(s05.SECTOR_ETF)
 
 
