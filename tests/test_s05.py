@@ -307,3 +307,43 @@ def test_s05_entry_modes(run):
     pk3 = s05.backtest(panel, P, sc, ec, replace(x10, entry_mode="peak", peak_open=3.0), record=False)
     assert pk3["entry_rate"] <= pk["entry_rate"]
     assert bt["final_equity"] == pytest.approx(s05.backtest(panel, P, sc, ec, cfg, record=False)["final_equity"])
+
+
+# ------------------------------------------------------------------ S08 diagnostic
+from equity_trading import s08  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def diag():
+    panel, stocks = s04.synthetic_ohlc_panel([2025])
+    sc = np.array([panel.symbols.index(s) for s in stocks])
+    sect = {s: k for k, v in UNIVERSE_01.items() for s in v}
+    ec = np.array([panel.symbols.index(SECTOR_ETF_01[sect[s]]) for s in stocks])
+    return panel, s08.compute(panel, sc, ec, s08.S08Config(), verbose=False)
+
+
+def test_s08_no_lookahead_and_shapes(diag):
+    panel, R = diag
+    first_live = panel.day_start[s08.S08Config().window_sessions]
+    for k in ("s0", "s1", "s2", "s3"):
+        assert R[k].shape == panel.c[:, :40].shape
+        assert np.isnan(R[k][:first_live]).all()
+    assert np.isfinite(R["s0"][first_live:]).mean() > 0.5
+
+
+def test_s08_signal_is_contrarian_on_synthetic(diag):
+    panel, R = diag
+    rows = np.arange(panel.day_start[25], len(panel.index) - 30, 4)
+    ic = np.nanmean(s08.rank_ic(-R["s0"], s08.forward_sum(R["eps"], 26), rows, min_n=20))
+    assert ic > 0.1
+    b = s08.bucket_returns(R["s0"], s08.forward_sum(R["eps"], 26), rows)
+    assert (b["contrarian_bps"].iloc[[0, -1]] > 0).all()
+
+
+def test_s08_helpers():
+    e = np.arange(10, dtype=float)[:, None] * np.ones((1, 2))
+    f = s08.forward_sum(e, 3)
+    assert f[0, 0] == 1 + 2 + 3 and np.isnan(f[-1, 0])
+    assert s08.ou_hit_zero_prob(0.0) == pytest.approx(1.0) and s08.ou_hit_zero_prob(4.0) == pytest.approx(0.0)
+    ex = s08.normal_exceedance()
+    assert ex[">3"] == pytest.approx(0.0027, abs=1e-4)

@@ -1,0 +1,81 @@
+# S08: why is |s| > 3 routine? A diagnostic of the S05 s-score
+
+| | |
+|---|---|
+| **Status** | Pre-registration, 2026-11-04, written after S05d (9cd8551) and before any S08 result |
+| **Notebook** | `studies/S08_sscore_diagnostic.ipynb` |
+| **Engine** | `src/equity_trading/s08.py` (tests in `tests/test_s05.py`) |
+| **Data** | Shared 15Min panel 2020–2025 (`PANEL_VERSION` 0.2.0). 2026 not used. No trading, no costs, no placebos. |
+
+## 0. Question
+
+In S05d the 100-slot book stayed full even at \|s\| ≥ 3. At any time more than 100 of about 500 stocks had \|s\| > 3, whereas a correctly scaled OU score would exceed 3 only about 0.27% of the time. Four candidate causes, each with a different fix:
+
+| Cause | Fix it would point to |
+|---|---|
+| Noise in m = a/(1 − b) when b ≈ 1 | robust or shrunk m |
+| Overnight gaps (earnings, news) entering the residual | exclude or treat the overnight bar separately |
+| Volatility clustering: σ_eq is a 20-day average | volatility forecast in the denominator (Iván's `deribit-market-data` HAR engine) |
+| Fat-tailed innovations | Student-t likelihood (Iván's question) |
+
+Plus whether mean reversion itself depends on the market volatility state, which would justify a regime model (HSMM) for b.
+
+**Prior evidence from `deribit-market-data`:**
+- HSMM turns 001–016: no development evidence for discrete volatility regimes, and a fitted GARCH with very short memory (α + β = 0.24), with the persistence carried by the HAR components.
+- So S08 uses a HAR-style variance ratio as the volatility engine and a simple market-volatility split as the regime test, before any HSMM is built.
+
+## 1. Variants (fixed)
+
+All use the S05 daily sector-ETF regression (20 sessions, α and β frozen for the next day) and the AR(1) fit of the cumulative residual.
+
+| Variant | s-score |
+|---|---|
+| V0 | S05 as traded: s = (X − m_c)/σ_eq |
+| V1 | **Overnight bar excluded:** the 09:30 bar contributes no residual increment, in the window fit and in the live residual |
+| V2 | V1 / λ_t, where λ_t² = (RV_1 + RV_5 + RV_20)/(3·RV_20) is a HAR-style ratio of the mean squared V1 increment over the last 1, 5 and 20 sessions, using bars up to t; λ clipped to [0.25, 4] |
+| V3 | V0 / λ_t (the same λ): volatility scaling alone |
+
+**V1 caveat:** removing increments from a mean-reverting level is only valid if those moves are **permanent**. If overnight residual moves revert, V1 adds a random walk and does worse. On the synthetic panel, where overnight moves revert by construction, V1 is much worse than V0 (rank IC 0.08 vs 0.25). Real data decide.
+
+**Rejected while building:** dividing increments by a time-of-day volatility profile and re-cumulating them. This rescales the reversion drift along with the noise and inflated extreme \|s\| on synthetic data. Time-of-day volatility mostly averages out over a reversion time of 1–3 sessions.
+
+**Target for all variants:** the forward sum of S05 residual increments (V0 parameters, overnight included) over 1 hour (4 bars), 1 day (26) and 5 days (130). This is the residual return a position actually earns.
+
+## 2. Measurements
+
+1. **Exceedance:** share of stock-bars with \|s\| > 1.25, 2, 3 and 4 per variant, against a normal OU; share with \|s\| > 3 by bar of the session.
+2. **Mean decomposition (V0):** the share of \|−m/σ\| beyond 1, 2 and 3; among \|s0\| > 3, the share with \|m/σ\| > 2.
+3. **Innovation tails:** median excess kurtosis of the AR(1) innovations per stock-day (V0 and V1); Student-t ν fitted on 800 sampled stock-days of standardized V1 innovations.
+4. **Signal quality:** cross-sectional rank IC of −s against the forward residual return, sampled every 4th bar. Means of daily IC series with Newey–West t-statistics, and by year.
+5. **Economics:** mean contrarian residual return (bps) by s bucket at 1 and 5 days, against the S05b measured round trip of about 13 bps.
+6. **Calibration:** within the session, the empirical probability of s reaching 0 before \|s\| = 4, by \|s\| bucket, against OU's prediction (unresolved paths reported).
+7. **Regimes:** terciles of trailing 20-session SPY intraday realized variance, known before each day. Per tercile: median reversion time 1/κ, 1-day IC (V0 and V3), and V0 contrarian bps for \|s\| in [2, 3].
+
+## 3. Pre-stated readings (what each result triggers)
+
+| Reading | Condition | Next step if true |
+|---|---|---|
+| R1 | V3 IC ≥ 1.10 × V0 IC at both 1d and 5d | Port the volatility engine into the s-score |
+| R2 | V1 IC ≥ 1.10 × V0 IC at both 1d and 5d | Adopt overnight exclusion |
+| R3 | V0 1-day IC in high-vol vs low-vol tercile differs by ≥ 25% | Regime model (HSMM) for b / gating |
+| R4 | V1 innovations' median excess kurtosis > 3 | Test Student-t likelihood estimation |
+| R5 | Among \|s0\| > 3, more than 50% have \|m/σ\| > 2 | Robust or shrunk m |
+| R6 | Any bucket's 5-day contrarian return > 13 bps | A longer-horizon version can clear costs; turnover, not signal, was the binding constraint |
+
+These are descriptive thresholds that decide what to build next. They are not significance tests.
+
+## 4. Limitations
+
+- **Development data:** 2020–2025 was used in S02–S05d.
+- **IC on overlapping targets:** forward returns at 1d and 5d overlap across sampled bars; Newey–West lags are 1 and 5 days on daily IC means.
+- **Regime terciles are full-sample quantiles** of a causal variable. This is fine for a descriptive split, not for trading.
+- **Within-session calibration is truncated at the close;** the unresolved share is reported.
+
+## Run
+
+```bash
+python -m pytest -q
+jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 studies/S08_sscore_diagnostic.ipynb
+```
+
+Uses the shared panel cache, so nothing is downloaded. The s-score paths take a few minutes. IC and buckets on about 9,700 cross-sections take a few minutes more. Memory: about 1 GB for the float32 paths.

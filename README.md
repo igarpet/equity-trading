@@ -26,6 +26,7 @@ Research rebuild of *Fractional Ornstein-Uhlenbeck Statistical Arbitrage with Sy
 | S05c | S05b with exits at the mean (s = 0) and beyond it (±0.5, ±1.0) | Alpaca SIP 2020–2025, 15m + S05b costs | Run 1fcef86: `NO_EDGE` — gross P&L flat across exits (no overshoot); fewer trades lift net to +9.9% (`x10`); random timing matches (58th percentile) |
 | S07b | S07 with bands 1.5× and 2.0× and no trading in the first 30 minutes | Alpaca SIP 2020–2025, 15m + S05b costs | Run 1fcef86: `NO_EDGE` — net ≈ 0% (bands 1.5×, 2.0×); gross Sharpe falls with the band (0.82, 0.67); open skip saves ~1.4%/yr |
 | S05d | Entry rules on `x10` exits: abs(s) ≥ 3, peaked excursion, both | Alpaca SIP 2020–2025, 15m + S05b costs | Run 9cd8551 (placebos not run): net +5.5% to +8.9% vs `x10` +9.9%; gross 0.28–0.31; book still full (95–100 positions) — entry rule does not change the result |
+| S08 | Diagnostic of the s-score: extremes vs OU, mean noise, overnight exclusion, HAR volatility scaling, innovation tails, rank IC, contrarian bps by bucket, volatility-regime split | Alpaca SIP 2020–2025, 15m | Pre-registered; notebook ready, awaiting run |
 
 ## Setup
 
