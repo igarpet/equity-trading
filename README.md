@@ -27,7 +27,7 @@ Research rebuild of *Fractional Ornstein-Uhlenbeck Statistical Arbitrage with Sy
 | S07b | S07 with bands 1.5× and 2.0× and no trading in the first 30 minutes | Alpaca SIP 2020–2025, 15m + S05b costs | Run 1fcef86: `NO_EDGE` — net ≈ 0% (bands 1.5×, 2.0×); gross Sharpe falls with the band (0.82, 0.67); open skip saves ~1.4%/yr |
 | S05d | Entry rules on `x10` exits: abs(s) ≥ 3, peaked excursion, both | Alpaca SIP 2020–2025, 15m + S05b costs | Run 9cd8551 (placebos not run): net +5.5% to +8.9% vs `x10` +9.9%; gross 0.28–0.31; book still full (95–100 positions) — entry rule does not change the result |
 | S08 | Diagnostic of the s-score: extremes vs OU, mean noise, overnight exclusion, HAR volatility scaling, innovation tails, rank IC, contrarian bps by bucket, volatility-regime split | Alpaca SIP 2020–2025, 15m | Run 80d72d3 (after A1): on hedged returns, IC ≈ 0.01–0.015 (V0); overnight exclusion and HAR scaling do not help; only \|s\| > 3 earns more than the 13 bps round trip at 5 days |
-| S09 | Calibrated log-HAR, two-state reverting-vs-shifted switching filter, overnight-gap fade/continuation; fit 2020–22, test 2023–25 | Alpaca SIP 2020–2025, 15m | Pre-registered; notebook ready, awaiting run |
+| S09 | Calibrated log-HAR, two-state reverting-vs-shifted switching filter, overnight-gap fade/continuation; fit 2020–22, test 2023–25 | Alpaca SIP 2020–2025, 15m | Run c5e6692: all readings false — calibrated HAR no IC gain; switching filter cannot separate states at 15m (≤ 0.3 nats per spell); gaps neither fade nor continue beyond costs |
 
 ## Setup
 

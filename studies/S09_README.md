@@ -65,3 +65,17 @@ jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeou
 ```
 
 Uses the shared panel cache. The S08 paths take a few minutes, the EM fit about a minute, and filtering every session a few minutes.
+
+## Result (c5e6692, test 2023–2025)
+
+**Readings: H1, M1, G1 and G2 are all false.**
+
+| | Result |
+|---|---|
+| **A. HAR** | Training fit is good: R² 0.56, coefficients 0.29 / 0.27 / 0.31 on the 1-, 5- and 20-session components, typical of equity HAR. Test IC 1d/5d: V0 0.0158 / 0.0137; V4 0.0155 / 0.0133; V3 0.0154 / 0.0132. Scaling by forecast volatility does not change the cross-sectional ranking. |
+| **B. Switching** | EM: k = 0.0128 per bar in R (half-life 54 bars), σ = 0.170, P(R→R) = 0.916, P(S→S) = 0.937, stationary P(R) = 0.43. At \|s\| ≥ 2, P(R) > 0.7 occurs for 1.2% of observations (median 0 qualifying names) and earns −2.0 bps over 5 days, vs +12.0 bps for P(R) ≤ 0.3. IC of −s·P(R) equals that of −s. |
+| **C. Gaps** | 5-day faded return for \|g\| ≥ 3: +7.3 bps (test). Training shows −2.7 bps at 1 day and +1.5 to +5.4 bps at 5 days for large gaps. No stable fade or continuation beyond costs. |
+
+**Why the switching filter cannot work at this frequency** (not a code error): the states differ only in the mean of each 15m increment, by k·\|s\|. At \|s\| = 2–3 that is 0.15–0.23 σ per bar. Over a typical R spell of about 12 bars, that accumulates only 0.13–0.30 nats of evidence, far too little to separate the states. P(R) therefore stays near its prior, and it rises above 0.7 mainly after s has already moved toward 0, when the remaining reversion is small.
+
+**Code audit:** checked for look-ahead, recursion correctness and target alignment. No errors that affect the readings. One known approximation: the last training day's HAR target is the first test day's RV (one day of overlap out of 716), which is negligible.
