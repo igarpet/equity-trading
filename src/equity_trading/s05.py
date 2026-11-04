@@ -23,7 +23,7 @@ import pandas as pd
 
 from .s04 import Panel, block_bootstrap_mean, perf_metrics, placebo_rank  # noqa: F401  (re-exported for the notebook)
 
-S05_VERSION = "0.1.2"
+S05_VERSION = "0.1.3"   # 0.1.3: optional entry_mask (P1); default behaviour unchanged
 
 SECTOR_ETF = {"Information Technology": "XLK", "Financials": "XLF", "Energy": "XLE", "Health Care": "XLV",
               "Industrials": "XLI", "Consumer Discretionary": "XLY", "Consumer Staples": "XLP", "Utilities": "XLU",
@@ -125,12 +125,15 @@ def first_decision_day(cfg: S05Config) -> int:
 # =================================================================== backtest
 def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.ndarray, cfg: S05Config,
              mode: str = "strategy", entry_prob: float | None = None, seed: int = 0, record: bool = True,
-             half_spread: np.ndarray | None = None) -> dict:
+             half_spread: np.ndarray | None = None, entry_mask: np.ndarray | None = None) -> dict:
     """Bar-by-bar simulation. mode: 'strategy' | 'placebo_timing' (contrarian entries at random flat
     tradable bars with |s| beyond the exit band, at probability entry_prob).
 
     half_spread: optional (T, n_columns) one-way cost per fill (fraction of price) for each bar and panel
-    column (S05b measured costs); multiplied by cfg.cost_mult. Default: cfg.half_spread_bps everywhere."""
+    column (S05b measured costs); multiplied by cfg.cost_mult. Default: cfg.half_spread_bps everywhere.
+
+    entry_mask: optional (D, N) bool; on trading day t, new entries are allowed only for stocks with
+    entry_mask[t - 1] True (the decision-day row, known at that close). Exits are never masked."""
     rng = np.random.default_rng(seed)
     r = log_returns(panel)
     o, c = panel.o, panel.c
@@ -243,6 +246,8 @@ def backtest(panel: Panel, params: dict, stock_cols: np.ndarray, etf_cols: np.nd
             pend[(ex | inv) & (pend != 2)] = 2
             # entries
             flat = (side == 0) & (pend == 0) & vd & fin
+            if entry_mask is not None:
+                flat &= entry_mask[e]
             if mode == "placebo_timing":
                 elig = flat & ((s < cfg.elig_long) | (s > cfg.elig_short))
                 sig_m = elig & (rng.random(N) < entry_prob)
@@ -307,9 +312,9 @@ def random_direction_test(gross_pnl: np.ndarray, n: int = 10_000, seed: int = 0)
 
 
 def run_placebo(panel: Panel, params: dict, stock_cols, etf_cols, cfg: S05Config, entry_prob: float, seed: int, start,
-                half_spread: np.ndarray | None = None) -> dict:
+                half_spread: np.ndarray | None = None, entry_mask: np.ndarray | None = None) -> dict:
     r = backtest(panel, params, stock_cols, etf_cols, cfg, mode="placebo_timing", entry_prob=entry_prob, seed=seed,
-                 record=False, half_spread=half_spread)
+                 record=False, half_spread=half_spread, entry_mask=entry_mask)
     return {"seed": seed, **perf_metrics(r["daily_equity"], cfg.initial_equity, start)}
 
 
