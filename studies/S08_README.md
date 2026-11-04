@@ -94,3 +94,17 @@ Uses the shared panel cache, so nothing is downloaded. The s-score paths take a 
 - τ is flat across volatility terciles (2.44–2.53 sessions); V0 IC is 0.030 (low volatility) vs 0.014 (high).
 - V1 innovations: median excess kurtosis 3.0, Student-t ν ≈ 4.0.
 - Among \|s0\| > 3, 18% have \|m/σ\| > 2.
+
+## Result of the re-run (80d72d3, hedged target, primary)
+
+| Rank IC of −s vs hedged return | 1h | 1d | 5d |
+|---|---|---|---|
+| V0 | 0.008 (t 6.4) | 0.014 (t 4.1) | 0.015 (t 2.7) |
+| V1 | 0.003 | 0.005 | 0.006 |
+| V3 | 0.008 | 0.013 | 0.014 |
+
+- **V1's advantage in the first run was an artifact of the −α term.** On tradable returns, excluding the overnight bar makes the signal *worse*. R2 is false.
+- **Readings:** R1, R2, R3 and R5 false; R4 true (heavy-tailed innovations); R6 true, but only for the extreme V0 buckets.
+- **Contrarian hedged return of V0 at 5 days:** 10–12 bps for \|s\| in [2, 3], 15–19 bps for \|s\| in [3, 4], 18–30 bps beyond 4, against a 13 bps round trip. This is consistent with S05c `x10`, which entered at a median \|s\| of 3.5, earned about 20 bps gross per trade and had a gross/cost ratio of 1.47.
+- **Regimes:** reversion time is flat across terciles. V0's 5-day contrarian bps at \|s\| in [2, 3] by tercile is 7.4 (low), −1.0 (mid) and 25.8 (high volatility): not monotonic, and noted only as a possible lead.
+- **Conclusion:** the tradable edge of the sector-ETF residual reversal at 15m is about 1–2× the market-order round trip, and only for extreme deviations held for a week or more. None of the tested model changes (overnight exclusion, HAR volatility scaling) improves it.
