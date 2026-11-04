@@ -79,3 +79,18 @@ jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeou
 ```
 
 Uses the shared panel cache, so nothing is downloaded. The s-score paths take a few minutes. IC and buckets on about 9,700 cross-sections take a few minutes more. Memory: about 1 GB for the float32 paths.
+
+## Amendment A1 (2026-11-04, after the first run a261864): tradable target
+
+- **The flaw:** the original target, forward residual increments r − α − β·r_ETF, subtracts each stock's 20-session drift α. A β-hedged position does not earn −α. Over 5 days (130 bars), α × 130 can be hundreds of bps, so the first run's contrarian bps (R6) and possibly its IC levels did not measure tradable returns.
+- **The evidence:** S05c's `x10` earned about 20 bps gross per trade over a median of 232 bars, while the residual-target buckets showed 90–180 bps at 5 days.
+- **Primary target is now the hedged return** r − β·r_ETF (the day's β, no α), forward over the same horizons. It is used for every reading. The residual target is still reported for comparison.
+- Regime table: V1 added (1-day IC; 5-day contrarian bps at \|s\| in [2, 3]).
+- **Readings and thresholds are unchanged.**
+
+**First-run results (residual target; superseded for R1, R2, R3 and R6 by the re-run):**
+- V1 1-day IC 0.101 vs V0 0.021 (Newey–West t = 32 vs 6); 5-day IC 0.224 vs 0.102.
+- Volatility scaling: no gain (V3 ≤ V0, V2 ≈ V1).
+- τ is flat across volatility terciles (2.44–2.53 sessions); V0 IC is 0.030 (low volatility) vs 0.014 (high).
+- V1 innovations: median excess kurtosis 3.0, Student-t ν ≈ 4.0.
+- Among \|s0\| > 3, 18% have \|m/σ\| > 2.

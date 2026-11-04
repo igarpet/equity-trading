@@ -25,7 +25,7 @@ import pandas as pd
 from .s04 import Panel
 from .s05 import log_returns
 
-S08_VERSION = "0.1.0"
+S08_VERSION = "0.1.1"
 
 
 @dataclass(frozen=True)
@@ -76,6 +76,7 @@ def compute(panel: Panel, stock_cols: np.ndarray, etf_cols: np.ndarray, cfg: S08
         slot[a_:b_] = np.arange(b_ - a_)
     f32 = np.float32
     eps_all = np.full((T, N), np.nan, f32)          # residual increment with the day's frozen alpha, beta
+    hed_all = np.full((T, N), np.nan, f32)          # beta-hedged return r - beta r_etf (no alpha): what a position earns
     eds_all = np.full((T, N), np.nan, f32)          # V1 increment (overnight bar zeroed)
     S = {k: np.full((T, N), np.nan, f32) for k in ("s0", "s1", "s2", "s3")}
     m_over_sig0 = np.full((T, N), np.nan, f32)      # -m / sigma_eq component of s0 (constant within a day)
@@ -126,6 +127,7 @@ def compute(panel: Panel, stock_cols: np.ndarray, etf_cols: np.ndarray, cfg: S08
             s0 = (X0 - mc0) / sg0
             s1 = (X1 - mc1) / sg1
         eps_all[t0:t1] = epst
+        hed_all[t0:t1] = Rt - beta * Et
         eds_all[t0:t1] = edst
         # HAR-style variance ratio from bars up to and including each bar of day t
         bpd = int(np.median(np.diff(ds)))
@@ -167,7 +169,7 @@ def compute(panel: Panel, stock_cols: np.ndarray, etf_cols: np.ndarray, cfg: S08
                 z_samples.append((e + 1, int(j), ((z - z.mean()) / z.std(ddof=1)).astype(f32)))
         if verbose and (e - first) % 250 == 0:
             print(f"  day {e + 1}/{D}", flush=True)
-    return {"eps": eps_all, **S, "m_over_sig0": m_over_sig0, "slot": slot, "day_valid": day_valid, **day,
+    return {"eps": eps_all, "hedged": hed_all, **S, "m_over_sig0": m_over_sig0, "slot": slot, "day_valid": day_valid, **day,
             "z_samples": z_samples}
 
 
