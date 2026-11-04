@@ -1,0 +1,8 @@
+{
+  "files": [
+    "by_year.csv",
+    "daily_returns_2020_2025.csv",
+    "gross_by_vix_quintile.csv",
+    "summary.json"
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "study": "P2-03",
+  "synthetic": false,
+  "years": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "config": {
+    "timeframe": "15Min",
+    "ffill_bars": 2,
+    "window_sessions": 20,
+    "min_bar_share": 0.95,
+    "max_tau_frac": 0.5,
+    "center_m": true,
+    "open_long": -1.25,
+    "open_short": 1.25,
+    "close_long": 1.0,
+    "close_short": -1.0,
+    "elig_long": -0.5,
+    "elig_short": 0.75,
+    "entry_mode": "level",
+    "peak_min": 1.25,
+    "peak_open": 1.25,
+    "peak_retreat": 0.25,
+    "size_per_stock": 0.01,
+    "max_positions": 100,
+    "initial_equity": 100000.0,
+    "half_spread_bps": 2.0,
+    "cost_mult": 1.0,
+    "n_placebo": 200,
+    "seed": 42
+  },
+  "p2_config": {
+    "vix_window": 250,
+    "vix_min": 200,
+    "skip": 1,
+    "min_price": 5.0,
+    "hac_lags": 5,
+    "alpha": 0.025,
+    "blocks": [
+      10,
+      20,
+      40
+    ],
+    "n_boot": 10000,
+    "h1_start": "2016-12-01",
+    "econ_start": "2020-01-01",
+    "end": "2025-12-31",
+    "h2_start": "2017-01-01",
+    "h2_end": "2019-12-31",
+    "h2_k": 5,
+    "n_label_placebo": 500,
+    "n_shift_placebo": 200,
+    "min_shift": 60,
+    "seed": 42
+  },
+  "trading_start": "2020-02-03",
+  "n_placebo": 200,
+  "metrics": {
+    "ALL 1x": {
+      "total_return": 0.09866858724321492,
+      "sharpe": 0.3604953034787152,
+      "max_drawdown": 0.07816916738798174,
+      "mean_daily": 7.318358221643783e-05,
+      "days": 1486.0
+    },
+    "ALL 2x": {
+      "total_return": -0.09913818391171847,
+      "sharpe": -0.2964880249040069,
+      "max_drawdown": 0.19183064447568476,
+      "mean_daily": -5.998539575969444e-05,
+      "days": 1486.0
+    },
+    "ALL 0x": {
+      "total_return": 0.3343009589999979,
+      "sharpe": 0.9936829490695669,
+      "max_drawdown": 0.05618945751961768,
+      "mean_daily": 0.00020361000898100193,
+      "days": 1486.0
+    },
+    "VIX 1x": {
+      "total_return": 0.227412862849953,
+      "sharpe": 0.8241918320483425,
+      "max_drawdown": 0.0544595106847785,
+      "mean_daily": 0.00014655100942258579,
+      "days": 1486.0
+    },
+    "VIX 2x": {
+      "total_return": 0.070290674472125,
+      "sharpe": 0.3098979207444815,
+      "max_drawdown": 0.07035846141638291,
+      "mean_daily": 5.476227129262949e-05,
+      "days": 1486.0
+    },
+    "VIX 0x": {
+      "total_return": 0.4058859709999967,
+      "sharpe": 1.3303830569927397,
+      "max_drawdown": 0.049164933520681964,
+      "mean_daily": 0.00023751137958907852,
+      "days": 1486.0
+    }
+  },
+  "trade_stats": {
+    "ALL": {
+      "trades": 16121,
+      "mean_gross_bps": 20.153750605242916,
+      "cost_per_trade_bps": 12.96332402509299,
+      "avg_open_positions": 99.9680928397113,
+      "gross_over_cost": 1.4647323408425268
+    },
+    "VIX": {
+      "trades": 10222,
+      "mean_gross_bps": 35.89361966863603,
+      "cost_per_trade_bps": 13.783155445462816,
+      "avg_open_positions": 60.58323381276286,
+      "gross_over_cost": 2.5184905640736934
+    }
+  },
+  "all_run_by_regime": {
+    "0": {
+      "trades": 8248,
+      "mean_gross_bps": -0.7411938006700312,
+      "median_bars": 234.0
+    },
+    "1": {
+      "trades": 7873,
+      "mean_gross_bps": 42.043945125752245,
+      "median_bars": 226.0
+    }
+  },
+  "V1_high_minus_low_gross": {
+    "mean": 0.004278513892642229,
+    "lo95": 0.00225763448388121,
+    "hi95": 0.006468035539981419
+  },
+  "placebo_shift_ranks": {
+    "total_return": {
+      "value": 0.227412862849953,
+      "percentile": 99.5,
+      "p_upper": 0.009950248756218905,
+      "placebo_median": 0.043332277020106225,
+      "placebo_p95": 0.13131356087104692
+    },
+    "sharpe": {
+      "value": 0.8241918320483425,
+      "percentile": 99.5,
+      "p_upper": 0.009950248756218905,
+      "placebo_median": 0.22058231297874392,
+      "placebo_p95": 0.5347081355237968
+    }
+  },
+  "bootstrap_VIX": {
+    "10": [
+      0.00014655100942258579,
+      1.0402101613784869e-05,
+      0.0003110276186588838
+    ],
+    "20": [
+      0.00014655100942258579,
+      1.9044890911221592e-05,
+      0.0003070602587325783
+    ],
+    "40": [
+      0.00014655100942258579,
+      3.797691608452212e-05,
+      0.0002940325687609028
+    ]
+  },
+  "gates": {
+    "V1_regime_dependence": true,
+    "V2_vs_shifted_regime": true,
+    "V3_economic": true,
+    "verdict": "EDGE_CANDIDATE",
+    "prospective_verdict": "PENDING_2026_HOLDOUT"
+  },
+  "versions": {
+    "package": "0.1.0",
+    "alpaca": "0.3.0",
+    "s05": "0.1.3",
+    "panel": "0.2.0",
+    "p2": "0.1.0"
+  }
+}

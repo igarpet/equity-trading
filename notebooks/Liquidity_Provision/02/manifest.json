@@ -1,0 +1,10 @@
+{
+  "files": [
+    "daily_returns_2017-2019.csv",
+    "daily_returns_2020-2025.csv",
+    "label_placebo.csv",
+    "manifest.json",
+    "summary.json"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p2\\alpaca0.3.0_p20.1.0"
+}

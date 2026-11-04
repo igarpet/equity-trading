@@ -1,0 +1,118 @@
+{
+  "study": "P2-01",
+  "synthetic": false,
+  "config": {
+    "vix_window": 250,
+    "vix_min": 200,
+    "skip": 1,
+    "min_price": 5.0,
+    "hac_lags": 5,
+    "alpha": 0.025,
+    "blocks": [
+      10,
+      20,
+      40
+    ],
+    "n_boot": 10000,
+    "h1_start": "2016-12-01",
+    "econ_start": "2020-01-01",
+    "end": "2025-12-31",
+    "h2_start": "2017-01-01",
+    "h2_end": "2019-12-31",
+    "h2_k": 5,
+    "n_label_placebo": 500,
+    "n_shift_placebo": 200,
+    "min_shift": 60,
+    "seed": 42
+  },
+  "n_stocks": 501,
+  "N1": {
+    "intercept": -9.87886440672604e-06,
+    "slope": 6.132179572894325e-06,
+    "t": 0.10628346581646392,
+    "p_one_sided": 0.45767872482398597,
+    "n": 2283
+  },
+  "N2": {
+    "intercept": -0.00014262277101151854,
+    "slope": 0.0005333473604464446,
+    "t": 1.2300945207028104,
+    "p_one_sided": 0.10933085583112889,
+    "n": 2283
+  },
+  "by_vix_quintile": {
+    "Q1": {
+      "days": 457,
+      "vix_mean": 11.525492338435134,
+      "mean_gross_bps": 1.265542912902467
+    },
+    "Q2": {
+      "days": 456,
+      "vix_mean": 14.324802626643265,
+      "mean_gross_bps": 0.03454025117158535
+    },
+    "Q3": {
+      "days": 457,
+      "vix_mean": 17.03610506412498,
+      "mean_gross_bps": -3.5505059714725427
+    },
+    "Q4": {
+      "days": 456,
+      "vix_mean": 20.680592089368584,
+      "mean_gross_bps": 3.604149983781199
+    },
+    "Q5": {
+      "days": 457,
+      "vix_mean": 30.105558036453616,
+      "mean_gross_bps": 3.900195906274406
+    }
+  },
+  "econ": {
+    "ungated": {
+      "gross_bps_day": 1.5701913220411226,
+      "cost_bps_day": 7.815021494737554,
+      "net_bps_day": -6.244830172696434,
+      "net2x_bps_day": -14.059851667433989,
+      "sharpe_net": -0.7890619310048522,
+      "days_active": 1508.0
+    },
+    "VIX-gated": {
+      "gross_bps_day": 2.0840086824221915,
+      "cost_bps_day": 3.877130806988013,
+      "net_bps_day": -1.7931221245658202,
+      "net2x_bps_day": -5.670252931553832,
+      "sharpe_net": -0.26004375798550144,
+      "days_active": 763.0
+    }
+  },
+  "bootstrap_gated_net_bps": {
+    "10": [
+      -1.7931221245658202,
+      -6.882836494739398,
+      3.573985842931027
+    ],
+    "20": [
+      -1.7931221245658202,
+      -6.619576578997598,
+      3.2013565215024697
+    ],
+    "40": [
+      -1.7931221245658202,
+      -6.533845968812989,
+      2.6952601676058237
+    ]
+  },
+  "gates": {
+    "N1_vix_slope": false,
+    "N2_vix_regime": false,
+    "N3_economic": false,
+    "replication_verdict": "NO_REPLICATION",
+    "economic_verdict": "NOT_PROFITABLE_AFTER_COSTS"
+  },
+  "versions": {
+    "package": "0.1.0",
+    "alpaca": "0.3.0",
+    "p2": "0.1.0",
+    "p1": "0.1.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "files": [
+    "all_run_by_regime.csv",
+    "daily_equity_ALL.csv",
+    "daily_equity_VIX.csv",
+    "placebo_shifted_regime.csv",
+    "summary.json",
+    "trades_ALL.csv",
+    "trades_VIX.csv"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p2_03\\alpaca0.3.0_s050.1.3_p0.2.0_p20.1.0"
+}
