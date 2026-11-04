@@ -1,0 +1,16 @@
+{
+  "files": [
+    "all_run_by_tercile.csv",
+    "daily_equity_ALL.csv",
+    "daily_equity_T1.csv",
+    "daily_equity_T2.csv",
+    "daily_equity_T3.csv",
+    "placebo_membership_T1.csv",
+    "summary.json",
+    "trades_ALL.csv",
+    "trades_T1.csv",
+    "trades_T2.csv",
+    "trades_T3.csv"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p1_02\\alpaca0.3.0_s050.1.3_p0.2.0_p10.1.0"
+}

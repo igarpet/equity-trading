@@ -1,0 +1,13 @@
+{
+  "files": [
+    "daily_returns_k1.csv",
+    "daily_returns_k21.csv",
+    "daily_returns_k5.csv",
+    "label_placebo_k1.csv",
+    "label_placebo_k21.csv",
+    "label_placebo_k5.csv",
+    "summary.json",
+    "terciles.csv"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p1\\alpaca0.3.0_p10.1.0"
+}

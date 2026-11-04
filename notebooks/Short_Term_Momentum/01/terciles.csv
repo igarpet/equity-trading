@@ -1,0 +1,4 @@
+tercile,mean_AV,median_log_dollar_volume,same_tercile_21d_later,names_per_day
+T1 low AV,0.7968,19.12,0.1604,162.5
+T2,0.976,19.26,0.121,162.8
+T3 high AV,1.28,19.41,0.1598,163
