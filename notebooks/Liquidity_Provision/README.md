@@ -11,6 +11,7 @@
 | `01_daily_vix_reversal.ipynb` | H1 faithful: Lehmann contrarian portfolio, daily 2016-12 → 2025; gross return on lagged VIX and on the high-VIX regime (HAC); regime-gated portfolio net of measured costs 2020–2025 | Run e9dedda: `NO_REPLICATION` (t = 0.11 / 1.23), net negative |
 | `02_high_volume_independent_sample.ipynb` | H2: P1's post-hoc observation (high abnormal volume reverses more) re-tested on 2017–2019, P1 arm-D construction at k = 5, 500 shuffled-label placebos | Run e9dedda: `NOT_CONFIRMED` (T3 − T1 = −0.84 bps/day, p = 0.80); P1 observation dropped |
 | `03_intraday_vix_gated_residual.ipynb` | H1 applied: S05 residual (`x10` exits) with entries only after high-VIX closes, 2020–2025; 200 circularly shifted regime placebos | Run e9dedda: **`EDGE_CANDIDATE`**: net +22.7% (Sharpe 0.82) vs ungated +9.9%; +7.0% at 2× cost; beats 199/200 shifted regimes; high-regime trades 42.0 bps gross vs −0.7 low |
+| `04_vix_gated_replication_2017_2019.ipynb` | Frozen VIX-gated S05 (spec in protocol 003), independent replication on 15m 2017–2019 with new quote samples; same gates; `REPLICATED` → 2026 holdout | Built; awaiting run |
 
 Readout: [`002_claude_p2_readout.md`](../../discussions/Liquidity_Provision/002_claude_p2_readout.md). Protocol: [`001_claude_p2_liquidity_provision_preregistration.md`](../../discussions/Liquidity_Provision/001_claude_p2_liquidity_provision_preregistration.md).
 

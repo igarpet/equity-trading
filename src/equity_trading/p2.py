@@ -179,3 +179,26 @@ def gates_15m(diff_ci: tuple, ranks: dict, net1: dict, net2: dict, boot_net: dic
     return {"V1_regime_dependence": v1, "V2_vs_shifted_regime": v2, "V3_economic": v3,
             "verdict": "EDGE_CANDIDATE" if (v1 and v2 and v3) else "NO_EDGE",
             "prospective_verdict": "PENDING_2026_HOLDOUT"}
+
+
+# =================================================================== panels outside the shared cache
+def panel_cache(symbols: list[str], timeframe: str, years: list[int], path, ffill_bars: int = 2):
+    """Panel for other years than the shared 2020-2025 cache, stored at `path`.
+    (s04.cached_panel keeps one file per timeframe and would overwrite the shared cache.)"""
+    import os
+    from pathlib import Path
+    from .s04 import NY, Panel, load_panel
+    path = Path(path)
+    if path.exists():
+        z = np.load(path, allow_pickle=True)
+        if list(z["years"]) == list(years) and set(symbols) <= set(z["symbols"]) | set(z["absent"]):
+            return Panel(index=pd.DatetimeIndex(z["index"]).tz_localize("UTC").tz_convert(NY), symbols=list(z["symbols"]),
+                         o=z["o"], c=z["c"], day_start=z["day_start"], days=z["days"], s2_daily=z["s2"], h=z["h"], l=z["l"])
+    panel = load_panel(sorted(symbols), timeframe, years, ffill_bars=ffill_bars)
+    absent = sorted(set(symbols) - set(panel.symbols))
+    tmp = path.with_name(path.stem + "_tmp.npz")
+    np.savez(tmp, index=panel.index.tz_convert("UTC").tz_localize(None).to_numpy(), symbols=np.array(panel.symbols),
+             absent=np.array(absent, dtype=object), years=np.array(years), o=panel.o, c=panel.c, day_start=panel.day_start,
+             days=panel.days, s2=panel.s2_daily, h=panel.h, l=panel.l)
+    os.replace(tmp, path)
+    return panel
