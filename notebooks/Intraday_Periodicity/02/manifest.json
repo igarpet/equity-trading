@@ -1,0 +1,9 @@
+{
+  "files": [
+    "by_window_lookback.csv",
+    "daily_A.csv",
+    "daily_B.csv",
+    "gross_by_slot_bps.csv",
+    "summary.json"
+  ]
+}
