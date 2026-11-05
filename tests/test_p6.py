@@ -107,3 +107,14 @@ def test_evaluate_rows_matches_evaluate():
     Wfull = np.zeros_like(W); Wfull[rows] = W[rows]; Wfull[rows[0] - 1] = W[rows[0] - 1]
     b = p6.evaluate(Wfull, R.to_numpy(), cost.to_numpy(), skip=1)
     np.testing.assert_allclose(a["gross"].to_numpy(), b["gross"].to_numpy()[rows + 2], atol=1e-6)
+
+
+def test_splice_returns_uses_yahoo_up_to_cut_and_alpaca_after():
+    sess = pd.bdate_range("2015-12-28", "2016-01-08")
+    yh = pd.DataFrame({"A": np.linspace(10, 11, 7), "OLD": 5.0}, index=sess[:7])            # Yahoo to 2016-01-05
+    ac = pd.DataFrame({"A": np.linspace(100, 104, 5), "NEW": [1, 2, 3, 4, 5.0]}, index=sess[5:])  # Alpaca from 2016-01-04
+    r = p6.splice_returns(yh, ac, sess, "2016-01-04")
+    assert list(r.columns) == ["A", "NEW", "OLD"]
+    np.testing.assert_allclose(r.loc["2016-01-04", "A"], yh["A"].pct_change().loc["2016-01-04"])   # cut day: Yahoo
+    np.testing.assert_allclose(r.loc["2016-01-06", "A"], ac["A"].pct_change().loc["2016-01-06"])   # after: Alpaca
+    assert np.isnan(r.loc["2016-01-04", "NEW"]) and r.loc["2016-01-06", "NEW"] == 0.5

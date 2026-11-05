@@ -90,7 +90,10 @@ def splice_returns(yahoo: pd.DataFrame, alpaca: pd.DataFrame, sessions: pd.Datet
     ra = alpaca.reindex(sessions).pct_change(fill_method=None)
     cols = sorted(set(ry.columns) | set(ra.columns))
     ry, ra = ry.reindex(columns=cols), ra.reindex(columns=cols)
-    return ry.where(ry.index <= cut, ra)
+    out = ra.copy()
+    before = ry.index <= cut
+    out.loc[before] = ry.loc[before]
+    return out
 
 
 def synthetic_returns(n_days: int = 1500, n_stocks: int = 120, k: int = 5, rev: float = 0.25, seed: int = 0,
