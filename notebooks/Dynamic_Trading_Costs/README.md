@@ -8,8 +8,8 @@
 
 | Notebook | Description | Status |
 |---|---|---|
-| `01_garleanu_pedersen.ipynb` | GP rule on two 15m residual signals (fast S05 s-score, slow 5-session residual), ex-ante B and φ, persistence-weighted aim, partial adjustment τ = 0.25 / 0.10 / 0.04 per bar, earnings windows excluded; both windows; 100 shuffled-forecast placebos per arm; ablations noPW / Aonly / Bonly | Built; awaiting run |
+| `01_garleanu_pedersen.ipynb` | GP rule on two 15m residual signals (fast S05 s-score, slow 5-session residual), ex-ante B and φ, persistence-weighted aim, partial adjustment τ = 0.25 / 0.10 / 0.04 per bar, earnings windows excluded; both windows; 100 shuffled-forecast placebos per arm; ablations noPW / Aonly / Bonly | Run d9955d8: `NO_EDGE`; all arms net negative in every year of both windows; turnover cut to 27×/yr but gross ≈ 0; slow signal has no predictive slope |
 
-Protocol: [`001_claude_p5_garleanu_pedersen_preregistration.md`](../../discussions/Dynamic_Trading_Costs/001_claude_p5_garleanu_pedersen_preregistration.md). Both windows judged; earnings-window exclusion (P4) built in.
+Readout: [`002_claude_p5_readout.md`](../../discussions/Dynamic_Trading_Costs/002_claude_p5_readout.md). Protocol: [`001_claude_p5_garleanu_pedersen_preregistration.md`](../../discussions/Dynamic_Trading_Costs/001_claude_p5_garleanu_pedersen_preregistration.md). Both windows judged; earnings-window exclusion (P4) built in.
 
 Run: `python -m pytest -q tests/test_p5.py`, then notebook 01 (~3–4 h, no downloads). `P5_SYNTHETIC=1` runs it offline. Notebooks are numbered from `01`; outputs go to `NN/`. Data: Alpaca SIP 2020–2025; 2026 sealed. Costs: S05b measured cost model unless the protocol states otherwise.
