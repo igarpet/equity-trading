@@ -1,0 +1,26 @@
+{
+  "files": [
+    "daily_equity_A_Aonly.csv",
+    "daily_equity_A_Bonly.csv",
+    "daily_equity_A_noPW.csv",
+    "daily_equity_A_q12.csv",
+    "daily_equity_A_q600.csv",
+    "daily_equity_A_q90.csv",
+    "daily_equity_B_Aonly.csv",
+    "daily_equity_B_Bonly.csv",
+    "daily_equity_B_noPW.csv",
+    "daily_equity_B_q12.csv",
+    "daily_equity_B_q600.csv",
+    "daily_equity_B_q90.csv",
+    "estimates_A.csv",
+    "estimates_B.csv",
+    "placebo_A_q12.csv",
+    "placebo_A_q600.csv",
+    "placebo_A_q90.csv",
+    "placebo_B_q12.csv",
+    "placebo_B_q600.csv",
+    "placebo_B_q90.csv",
+    "summary.json"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p5"
+}
