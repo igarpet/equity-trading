@@ -1,0 +1,8 @@
+{
+  "files": [
+    "arms.csv",
+    "edgar_events_by_year.csv",
+    "summary.json"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p4"
+}

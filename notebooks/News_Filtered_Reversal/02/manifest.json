@@ -1,0 +1,12 @@
+{
+  "files": [
+    "daily_equity_A_ALL.csv",
+    "daily_equity_A_EX.csv",
+    "daily_equity_B_ALL.csv",
+    "daily_equity_B_EX.csv",
+    "placebo_random_exclusion_A.csv",
+    "placebo_random_exclusion_B.csv",
+    "summary.json"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p4_02"
+}
