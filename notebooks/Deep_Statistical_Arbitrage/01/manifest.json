@@ -1,0 +1,9 @@
+{
+  "files": [
+    "fits.csv"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p6",
+  "device": "cuda",
+  "torch": "2.14.0+cu126",
+  "p6": "0.1.0"
+}
