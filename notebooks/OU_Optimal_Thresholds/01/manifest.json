@@ -1,0 +1,12 @@
+{
+  "files": [
+    "daily_equity_A_BT.csv",
+    "daily_equity_A_LP.csv",
+    "daily_equity_A_incumbent.csv",
+    "daily_equity_B_BT.csv",
+    "daily_equity_B_LP.csv",
+    "daily_equity_B_incumbent.csv",
+    "summary.json"
+  ],
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p8\\v0.1.0"
+}
