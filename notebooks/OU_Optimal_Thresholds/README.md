@@ -8,6 +8,8 @@
 
 | Notebook | Description | Status |
 |---|---|---|
-| — | Pre-registration not yet written | Planned |
+| `01_ou_optimal_thresholds.ipynb` | Bertram per-stock-day band m*(c̃) and Lipton–López de Prado take-profit / stop-loss / 3-half-life limit (simulated first-passage table) on the S05 residual with the earnings filter, measured costs, both windows; vs the incumbent S05 `x10` + earnings filter | Built; awaiting run |
 
-Protocol: `../../discussions/OU_Optimal_Thresholds/` (written before any run). Notebooks are numbered from `01`; outputs go to `NN/`. Data: Alpaca SIP 2020–2025; 2026 sealed. Costs: S05b measured cost model unless the protocol states otherwise.
+Protocol: [`001_claude_p8_ou_optimal_thresholds_preregistration.md`](../../discussions/OU_Optimal_Thresholds/001_claude_p8_ou_optimal_thresholds_preregistration.md). Both windows judged; earnings filter built in.
+
+Run: `python -m pytest -q tests/test_p8.py`, then notebook 01 (~1 h, no downloads; restart the kernel after pulling). `P8_SYNTHETIC=1` runs it offline. Notebooks are numbered from `01`; outputs go to `NN/`. Data: Alpaca SIP 2020–2025; 2026 sealed. Costs: S05b measured cost model unless the protocol states otherwise.
