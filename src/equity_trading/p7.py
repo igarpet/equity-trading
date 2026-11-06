@@ -18,7 +18,7 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import pandas as pd
 
-P7_VERSION = "0.1.0"
+P7_VERSION = "0.1.1"   # C1 (protocol 002): all share tags merged, spike/band cleaning, common-set rank returns
 SHARE_TAGS = (("dei", "EntityCommonStockSharesOutstanding"), ("us-gaap", "CommonStockSharesOutstanding"),
               ("us-gaap", "WeightedAverageNumberOfSharesOutstandingBasic"))
 
@@ -66,12 +66,12 @@ def _cik_map() -> dict:
 
 
 def sec_shares(symbols: list[str], verbose: bool = True) -> pd.DataFrame:
-    """[symbol, cik, tag, end, val, filed] share counts from SEC XBRL company concepts (first tag with data).
-    Cached per CIK under <data>/SEC/shares/."""
+    """[symbol, cik, tag, end, val, filed] share counts from all SEC XBRL company concepts in SHARE_TAGS.
+    Cached per CIK under <data>/SEC/shares_all/ (0.1.0 kept only the first tag with data)."""
     import requests
     from .data import vendor_dir
     from .p4 import _sec_get, sec_symbol
-    d = vendor_dir("SEC") / "shares"
+    d = vendor_dir("SEC") / "shares_all"
     d.mkdir(parents=True, exist_ok=True)
     cmap, sess, out, missing, t0 = _cik_map(), requests.Session(), [], [], time.time()
     for k, s in enumerate(symbols, 1):
@@ -83,14 +83,13 @@ def sec_shares(symbols: list[str], verbose: bool = True) -> pd.DataFrame:
         if p.exists():
             df = pd.read_parquet(p)
         else:
-            df = pd.DataFrame(columns=["tag", "end", "val", "filed"])
+            parts = []
             for tax, tag in SHARE_TAGS:
                 js = _sec_get(f"https://data.sec.gov/api/xbrl/companyconcept/CIK{cik:010d}/{tax}/{tag}.json", sess)
                 rows = ((js or {}).get("units") or {}).get("shares") or []
-                if rows:
-                    df = pd.DataFrame([(tag, r.get("end"), r.get("val"), r.get("filed")) for r in rows],
-                                      columns=["tag", "end", "val", "filed"])
-                    break
+                parts.append(pd.DataFrame([(tag, r.get("end"), r.get("val"), r.get("filed")) for r in rows],
+                                          columns=["tag", "end", "val", "filed"]))
+            df = pd.concat(parts, ignore_index=True)
             tmp = p.with_suffix(".parquet.tmp"); df.to_parquet(tmp, index=False); os.replace(tmp, p)
         out.append(df.assign(symbol=s, cik=cik))
         if verbose and (k % 50 == 0 or k == len(symbols)):
@@ -195,22 +194,43 @@ def alpaca_split_daily(symbols: list[str], years: list[int], batch: int = 50, ve
 
 
 # =================================================================== capitalisation and ranks
+def clean_share_series(g: pd.DataFrame, spike: float = 1.5, band: float = 3.0) -> pd.DataFrame:
+    """g: one symbol's filings sorted by filed date, column 'adj' (split basis). Drops isolated spikes (off by more
+    than `spike` x from both neighbours, in the same direction) and values more than `band` x away from the median."""
+    v = g["adj"].to_numpy(float)
+    keep = np.ones(len(v), bool)
+    for i in range(1, len(v) - 1):
+        up = v[i] > spike * v[i - 1] and v[i] > spike * v[i + 1]
+        dn = v[i] * spike < v[i - 1] and v[i] * spike < v[i + 1]
+        keep[i] = not (up or dn)
+    med = np.median(v[keep]) if keep.any() else np.nan
+    keep &= (v <= band * med) & (v >= med / band)
+    return g[keep]
+
+
 def shares_daily(records: pd.DataFrame, splits: dict, current: dict, sessions: pd.DatetimeIndex,
                  band: tuple = (0.5, 2.0)) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """(sessions x symbols) point-in-time shares on today's split basis, and a per-symbol diagnostics frame.
-    One symbol per CIK (first alphabetically). Rescaled by the Yahoo current count when the ratio is outside band."""
+    """(sessions x symbols) point-in-time shares on today's split basis, and per-symbol diagnostics.
+    C1: tags are merged by filing date with priority dei > CommonStockSharesOutstanding > weighted-average basic;
+    isolated spikes and values > 3x from the median are dropped (clean_share_series); then the whole series is
+    rescaled when its latest value and Yahoo's current count differ by more than `band`. One symbol per CIK."""
     out, diag = {}, []
     if not len(records):
         return pd.DataFrame(index=sessions), pd.DataFrame()
-    keep = records.groupby("cik")["symbol"].min()
-    recs = records[records["symbol"].isin(set(keep))].dropna(subset=["val", "filed", "end"])
+    prio = {tag: i for i, (_, tag) in enumerate(SHARE_TAGS)}
+    keep_sym = records.groupby("cik")["symbol"].min()
+    recs = records[records["symbol"].isin(set(keep_sym))].dropna(subset=["val", "filed", "end"])
     for s, g in recs.groupby("symbol"):
         g = g.copy()
         g["end"], g["filed"] = pd.to_datetime(g["end"]), pd.to_datetime(g["filed"])
+        g["prio"] = g["tag"].map(prio)
         sp = splits.get(s, pd.Series(dtype=float))
-        g["adj"] = g.apply(lambda r: float(r["val"]) * float(np.prod(sp[sp.index > r["end"]].to_numpy())) if len(sp) else float(r["val"]), axis=1)
-        g = g.sort_values(["filed", "end"]).drop_duplicates("filed", keep="last")
-        g = g[g["adj"] > 0]
+        fac = (lambda e: float(np.prod(sp[sp.index > e].to_numpy()))) if len(sp) else (lambda e: 1.0)
+        g["adj"] = g["val"].astype(float) * g["end"].map(fac)
+        g = g[g["adj"] > 0].sort_values(["filed", "prio", "end"], ascending=[True, True, False])
+        g = g.drop_duplicates("filed", keep="first")
+        n_raw = len(g)
+        g = clean_share_series(g) if len(g) >= 3 else g
         if g.empty:
             continue
         pos = np.searchsorted(g["filed"].values, sessions.values, side="right") - 1
@@ -221,8 +241,9 @@ def shares_daily(records: pd.DataFrame, splits: dict, current: dict, sessions: p
         if scaled:
             vals = vals * ratio
         out[s] = vals
-        diag.append({"symbol": s, "tag": g["tag"].iloc[-1], "filings": len(g), "first_filed": g["filed"].iloc[0].date(),
-                     "latest_adj": g["adj"].iloc[-1], "yahoo_current": cur, "ratio": ratio, "rescaled": scaled})
+        diag.append({"symbol": s, "tags": ",".join(sorted(g["tag"].unique())), "filings": len(g), "dropped": n_raw - len(g),
+                     "first_filed": g["filed"].iloc[0].date(), "latest_adj": g["adj"].iloc[-1], "yahoo_current": cur,
+                     "ratio": ratio, "rescaled": scaled})
     return pd.DataFrame(out, index=sessions), pd.DataFrame(diag)
 
 
@@ -250,6 +271,22 @@ def rank_returns(sorted_cap: np.ndarray) -> np.ndarray:
     return r
 
 
+def common_rank_returns(C: np.ndarray, K: int) -> np.ndarray:
+    """C1: r[t, k] = k-th largest cap at t / k-th largest cap at t-1 - 1, both taken over the stocks with a cap on
+    both days, so a stock entering or leaving the data does not shift every rank below it."""
+    D = len(C)
+    out = np.full((D, K), np.nan)
+    ok = np.isfinite(C) & (C > 0)
+    for t in range(1, D):
+        m = ok[t] & ok[t - 1]
+        if m.sum() < K:
+            continue
+        a = np.sort(C[t - 1, m])[::-1][:K]
+        b = np.sort(C[t, m])[::-1][:K]
+        out[t] = b / a - 1
+    return out
+
+
 def build_rank_dataset(R: pd.DataFrame, cap: pd.DataFrame, cost: pd.DataFrame, cfg: P7Config,
                        start_row: int | None = None, verbose: bool = True) -> dict:
     """Decision-row arrays in rank coordinates. R: stock total returns (sessions x stocks), cap aligned to R."""
@@ -258,8 +295,9 @@ def build_rank_dataset(R: pd.DataFrame, cap: pd.DataFrame, cost: pd.DataFrame, c
     Rn = R.to_numpy(float)
     nxt = np.vstack([Rn[1:], np.full((1, N), np.nan)])
     valid = pd.DataFrame(np.isfinite(Rn) & np.isfinite(nxt), index=R.index, columns=R.columns)
-    ra = rank_arrays(cap.reindex(index=R.index, columns=R.columns), valid, cfg.n_ranks)
-    rr = rank_returns(ra["sorted_cap"])
+    capr = cap.reindex(index=R.index, columns=R.columns)
+    ra = rank_arrays(capr, valid, cfg.n_ranks)
+    rr = common_rank_returns(capr.to_numpy(float), cfg.n_ranks)
     RR = pd.DataFrame(rr, index=R.index)
     pr = pca_residuals(RR, cfg.pca_window, cfg.n_factors, start_row, verbose)
     x = inputs(pr["resid"], cfg.lookback)
