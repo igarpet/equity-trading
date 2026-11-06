@@ -8,10 +8,10 @@
 
 | Notebook | Description | Status |
 |---|---|---|
-| `01_data_and_training.ipynb` | Yahoo 2005–2015 + Alpaca 2016–2025 daily returns; PCA-5 residuals (252-session window, daily); 30-session cumulative-residual inputs; rolling CNN+Transformer fits (750 train / 250 validation / 125 predict, 5 seeds), net-Sharpe objective with factor neutralisation and measured costs; all fits cached | Built; awaiting run |
-| `02_evaluation.ipynb` | Out-of-sample 2017–2019 and 2020–2025: network vs OU and linear benchmarks; gates G1 bootstrap, G2 gross vs 1,000 weight permutations, G3 2× cost | Built; awaiting run (after 01) |
+| `01_data_and_training.ipynb` | Yahoo 2005–2015 + Alpaca 2016–2025 daily returns; PCA-5 residuals (252-session window, daily); 30-session cumulative-residual inputs; rolling CNN+Transformer fits (750 train / 250 validation / 125 predict, 5 seeds), net-Sharpe objective with factor neutralisation and measured costs; all fits cached | Run ccb77b2: 19 fits × 5 seeds; validation Sharpe falls below 0 for 2024–2025 fits; seed dispersion large |
+| `02_evaluation.ipynb` | Out-of-sample 2017–2019 and 2020–2025: network vs OU and linear benchmarks; gates G1 bootstrap, G2 gross vs 1,000 weight permutations, G3 2× cost | Run ccb77b2: `NO_EDGE`; net +0.8% (B) / +2.7% (A), Sharpe 0.12 / 0.13; gross ≈ linear 5-day reversal; turnover 0.26/day vs 0.63–0.72 for benchmarks |
 
-Protocol: [`001_claude_p6_deep_stat_arb_preregistration.md`](../../discussions/Deep_Statistical_Arbitrage/001_claude_p6_deep_stat_arb_preregistration.md).
+Readout: [`002_claude_p6_readout.md`](../../discussions/Deep_Statistical_Arbitrage/002_claude_p6_readout.md). Protocol: [`001_claude_p6_deep_stat_arb_preregistration.md`](../../discussions/Deep_Statistical_Arbitrage/001_claude_p6_deep_stat_arb_preregistration.md).
 
 **PyTorch for a GTX 1070 (Pascal, sm_61).** Only the CUDA 12.6 wheels still include Pascal, and PyTorch 2.14 is the last release with them:
 
