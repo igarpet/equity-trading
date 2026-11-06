@@ -1,10 +1,11 @@
 {
   "files": [
     "fits.csv",
+    "manifest.json",
     "shares_diagnostics.csv"
   ],
-  "cache": "D:\\MarketData\\EquityTrading\\results\\p7",
+  "cache": "D:\\MarketData\\EquityTrading\\results\\p7\\v0.1.1",
   "device": "cuda",
   "torch": "2.14.0+cu126",
-  "p7": "0.1.0"
+  "p7": "0.1.1"
 }

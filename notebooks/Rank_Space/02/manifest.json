@@ -1,5 +1,6 @@
 {
   "files": [
+    "manifest.json",
     "results.csv",
     "summary.json"
   ]
