@@ -24,19 +24,19 @@ def test_cme_trade_date_rolls_at_17_chicago():
 
 
 def test_plan_requests_refuse_holdout():
-    reqs = F.plan_requests([("NQ", 2025)])
+    reqs = F.plan_requests([("MNQ", 2025)])
     assert len(reqs) == 12 and reqs[-1].end == F.HOLDOUT_START
     with pytest.raises(F.HoldoutError):
-        F.plan_requests([("NQ", 2026)])
+        F.plan_requests([("MNQ", 2026)])
 
 
 def test_load_ticks_holdout_guard(market_dir):
     df = F.synthetic_ticks("2026-01-05", days=2)
-    F.write_months(df, "ninjatrader", "NQ")
+    F.write_months(df, "ninjatrader", "MNQ")
     with pytest.raises(F.HoldoutError):
-        F.load_ticks("NQ", "2025-12-01", "2026-02-01", "ninjatrader")
-    assert len(F.load_ticks("NQ", "2025-12-01", "2026-02-01", "ninjatrader", allow_holdout=True)) == len(df)
-    counts = F.holdout_day_counts("NQ", "ninjatrader")
+        F.load_ticks("MNQ", "2025-12-01", "2026-02-01", "ninjatrader")
+    assert len(F.load_ticks("MNQ", "2025-12-01", "2026-02-01", "ninjatrader", allow_holdout=True)) == len(df)
+    counts = F.holdout_day_counts("MNQ", "ninjatrader")
     assert counts["ticks"].sum() == len(df) and set(counts.columns) == {"month", "trade_dates", "ticks"}
 
 
@@ -61,7 +61,7 @@ def test_stitch_front_follows_prior_day_volume():
     df = F.synthetic_ticks(days=10, roll_day=5)
     out = F.stitch_front(df)
     rolls = F.roll_dates(out)
-    assert len(rolls) == 1 and rolls["from"].iloc[0] == "NQ 12-25" and rolls["to"].iloc[0] == "NQ 03-26"
+    assert len(rolls) == 1 and rolls["from"].iloc[0] == "MNQ 12-25" and rolls["to"].iloc[0] == "MNQ 03-26"
     days = sorted(set(F.cme_trade_date(df["ts"])))
     assert rolls["trade_date"].iloc[0] == days[6]                          # leader from day 5 -> front from day 6
     assert days[0] not in set(F.cme_trade_date(out["ts"]))                 # first day has no prior day
@@ -82,8 +82,8 @@ def _write_nt(df, folder, tz="UTC", five=True):
 @pytest.mark.parametrize("tz", ["UTC", "America/New_York"])
 def test_nt_export_roundtrip(tmp_path, tz):
     df = F.synthetic_ticks(days=8, roll_day=4)
-    _write_nt(df, tmp_path / "NQ", tz)
-    got = F.load_nt_root(tmp_path / "NQ", tz)
+    _write_nt(df, tmp_path / "MNQ", tz)
+    got = F.load_nt_root(tmp_path / "MNQ", tz)
     want = F.stitch_front(df)
     assert len(got) == len(want)
     assert (got["ts"].to_numpy() == want["ts"].to_numpy()).all()
@@ -93,15 +93,15 @@ def test_nt_export_roundtrip(tmp_path, tz):
 
 def test_nt_three_field_exports_merge_quotes(tmp_path):
     df = F.synthetic_ticks(days=3, roll_day=10)
-    _write_nt(df, tmp_path / "NQ", five=False)
-    got = F.load_nt_root(tmp_path / "NQ", "UTC")
+    _write_nt(df, tmp_path / "MNQ", five=False)
+    got = F.load_nt_root(tmp_path / "MNQ", "UTC")
     agree = F.sign_agreement(got, F.stitch_front(df))
     assert agree["match_rate"] > 0.99 and agree["agreement"] > 0.99
 
 
 def test_parse_nt_contract_names():
-    assert F.parse_nt_contract("NQ 12-25.Last.txt") == ("NQ", "NQ 12-25", "Last")
-    assert F.parse_nt_contract("MNQ 03-26.txt") == ("MNQ", "MNQ 03-26", "Last")
+    assert F.parse_nt_contract("MNQ 12-25.Last.txt") == ("MNQ", "MNQ 12-25", "Last")
+    assert F.parse_nt_contract("MES 03-26.txt") == ("MES", "MES 03-26", "Last")
     with pytest.raises(ValueError):
         F.parse_nt_contract("NQ.csv")
 
@@ -144,7 +144,7 @@ def test_download_stops_at_budget_and_logs_before_paying(market_dir, monkeypatch
     monkeypatch.setattr(F, "normalise_raw_file", lambda path, r: (
         F.synthetic_ticks(f"{r.start:%Y-%m}-05", days=1).to_parquet(
             F.cache_dir("databento", r.root) / f"{r.start:%Y-%m}.parquet"), 1)[1])
-    reqs = F.plan_requests([("NQ", 2025)])[:4]
+    reqs = F.plan_requests([("MNQ", 2025)])[:4]
     log = F.download(cl, reqs, budget=115.0)
     assert log["status"].tolist()[:2] == ["downloaded", "downloaded"]
     assert log["status"].iloc[2].startswith("stopped")
@@ -158,10 +158,10 @@ def test_read_recorder_roundtrip(tmp_path):
     lines = ["ts_utc,instrument,price,size,bid,ask"] + [
         f"{t.strftime('%Y-%m-%dT%H:%M:%S.%f')}0Z,{c},{p},{s},{b},{a}"
         for t, c, p, s, b, a in zip(df["ts"], df["contract"], df["price"], df["size"], df["bid"], df["ask"])]
-    p = tmp_path / "NQ_12-25_x.csv"
+    p = tmp_path / "MNQ_12-25_x.csv"
     p.write_text("\n".join(lines) + "\n")
     out = F.read_recorder([p, p])                                          # duplicated file -> deduplicated
-    got = out["NQ"]
+    got = out["MNQ"]
     want = F.stitch_front(df)
     assert len(got) == len(want) and (got["sign"].to_numpy() == want["sign"].to_numpy()).all()
 
@@ -173,3 +173,15 @@ def test_coverage_and_missing_days():
     expected = F.cme_trading_days("2025-11-03", "2025-11-10")
     assert [str(d) for d in expected] == ["2025-11-03", "2025-11-04", "2025-11-05", "2025-11-06", "2025-11-07"]
     assert [str(d) for d in F.missing_trade_dates(cov, expected)] == ["2025-11-07"]
+
+
+def test_full_size_contracts_are_refused(tmp_path):
+    for root in ("NQ", "ES", "YM"):
+        with pytest.raises(ValueError):
+            F.plan_requests([(root, 2025)])
+    df = F.synthetic_ticks(days=2, contracts=("NQ 12-25", "NQ 03-26"))
+    folder = tmp_path / "NQ"
+    folder.mkdir()
+    (folder / "NQ 12-25.Last.txt").write_text("\n".join(F.to_nt_lines(df[df["contract"] == "NQ 12-25"])) + "\n")
+    with pytest.raises(ValueError):
+        F.load_nt_root(folder, "UTC")

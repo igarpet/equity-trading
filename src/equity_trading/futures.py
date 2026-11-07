@@ -2,6 +2,8 @@
 
 Three sources are normalised to one tick table per root (``TICK_COLUMNS``):
 
+Micro contracts only (MNQ, MES, MYM); other roots raise ``ValueError``.
+
 * Databento GLBX.MDP3 ``tbbo`` (DEV/TEST, 2023-2025): exchange aggressor flag.
 * NinjaTrader 8 tick exports (sealed Holdout A, 2026 -, plus the Nov-Dec 2025 bridge).
 * The NinjaScript recorder ``tools/ninjatrader/OrderFlowRecorder.cs`` (Holdout B, forward).
@@ -31,18 +33,17 @@ import pandas as pd
 
 from .data import vendor_dir
 
-FUTURES_VERSION = "0.1.0"
+FUTURES_VERSION = "0.2.0"
 DATASET = "GLBX.MDP3"
 HOLDOUT_START = pd.Timestamp("2026-01-01", tz="UTC")
 BUDGET_USD = 115.0
 CHICAGO = "America/Chicago"
 NY = "America/New_York"
 
+# Micro contracts only (Ivan, 2026-11-07, FOF 002): no full-size contract is requested or loaded.
 # root: (tick size in index points, USD per tick per contract)
-SPECS = {
-    "ES": (0.25, 12.50), "NQ": (0.25, 5.00), "YM": (1.0, 5.00),
-    "MES": (0.25, 1.25), "MNQ": (0.25, 0.50), "MYM": (1.0, 0.50),
-}
+SPECS = {"MNQ": (0.25, 0.50), "MES": (0.25, 1.25), "MYM": (1.0, 0.50)}
+MICROS = tuple(SPECS)
 
 TICK_COLUMNS = ["ts", "price", "size", "bid", "ask", "sign", "sign_method", "contract", "source"]
 SOURCES = {"databento": ("Databento", "tbbo"), "ninjatrader": ("NinjaTrader", "ticks"),
@@ -51,6 +52,11 @@ SOURCES = {"databento": ("Databento", "tbbo"), "ninjatrader": ("NinjaTrader", "t
 
 class HoldoutError(RuntimeError):
     """Raised when code would read or buy data from the sealed holdout (2026 onward)."""
+
+
+def assert_micro(root: str) -> None:
+    if root not in MICROS:
+        raise ValueError(f"{root!r} is not a micro contract; this branch uses only {MICROS} (FOF 002).")
 
 
 class BudgetError(RuntimeError):
@@ -73,6 +79,7 @@ def assert_pre_holdout(end, what: str = "request") -> None:
 
 
 def cache_dir(source: str, root: str) -> Path:
+    assert_micro(root)
     vendor, sub = SOURCES[source]
     d = vendor_dir(vendor) / sub / root
     d.mkdir(parents=True, exist_ok=True)
@@ -240,9 +247,10 @@ class Request:
 
 
 def plan_requests(order: list[tuple[str, int]], schema: str = "tbbo") -> list[Request]:
-    """Monthly requests in spend order, e.g. [("NQ", 2025), ("ES", 2025), ("NQ", 2024)]."""
+    """Monthly requests in spend order, e.g. [("MNQ", 2025), ("MNQ", 2024), ("MES", 2025)]."""
     out = []
     for root, year in order:
+        assert_micro(root)
         for m in _months(f"{year}-01-01", f"{year + 1}-01-01"):
             r = Request(root, m, m + pd.offsets.MonthBegin(1), schema)
             assert_pre_holdout(r.end, r.key)
@@ -326,7 +334,7 @@ def raw_path(r: Request) -> Path:
 
 
 def normalise_raw_file(path: Path | str, r: Request, chunk: int = 2_000_000) -> int:
-    """Raw DBN file -> monthly Parquet, in chunks so a month of NQ fits in 16 GB of RAM."""
+    """Raw DBN file -> monthly Parquet, in chunks so a month of MNQ fits in 16 GB of RAM."""
     import databento as db
     store = db.DBNStore.from_file(path)
     parts = []
@@ -386,10 +394,10 @@ _NT_NAME = re.compile(r"^(?P<contract>(?P<root>[A-Z0-9]+) \d{2}-\d{2})(?:\.(?P<k
 
 
 def parse_nt_contract(name: str) -> tuple[str, str, str]:
-    """'NQ 12-25.Last.txt' -> ('NQ', 'NQ 12-25', 'Last'). Files without a kind are 'Last'."""
+    """'MNQ 12-25.Last.txt' -> ('MNQ', 'MNQ 12-25', 'Last'). Files without a kind are 'Last'."""
     m = _NT_NAME.match(Path(name).name)
     if not m:
-        raise ValueError(f"not a NinjaTrader tick export name: {name!r} (expected e.g. 'NQ 12-25.Last.txt')")
+        raise ValueError(f"not a NinjaTrader tick export name: {name!r} (expected e.g. 'MNQ 12-25.Last.txt')")
     return m["root"], m["contract"], m["kind"] or "Last"
 
 
@@ -443,6 +451,8 @@ def load_nt_root(folder: Path | str, tz: str) -> pd.DataFrame:
         files.setdefault(contract, {})[kind] = p
     if len(root_seen) > 1:
         raise ValueError(f"{folder}: several roots {sorted(root_seen)}; keep one root per folder")
+    for r in root_seen:
+        assert_micro(r)
     parts = []
     for contract, kinds in files.items():
         last = read_nt_export(kinds["Last"], tz)
@@ -472,6 +482,8 @@ def read_recorder(paths: list[Path | str]) -> dict[str, pd.DataFrame]:
     df["root"] = df["contract"].str.split(" ").str[0]
     out = {}
     for root, part in df.groupby("root"):
+        if root not in MICROS:             # e.g. a recorder accidentally left on a full-size chart
+            continue
         part = sign_trades(part.drop(columns="root").sort_values("ts", kind="stable").reset_index(drop=True))
         out[root] = _finish(stitch_front(part), "recorder")
     return out
@@ -553,7 +565,7 @@ def sign_agreement(inferred: pd.DataFrame, exchange: pd.DataFrame) -> dict:
 # ---------------------------------------------------------------------------------------------
 
 def synthetic_ticks(start: str = "2025-11-03", days: int = 10, per_day: int = 4000, seed: int = 0,
-                    contracts: tuple[str, str] = ("NQ 12-25", "NQ 03-26"), roll_day: int = 5) -> pd.DataFrame:
+                    contracts: tuple[str, str] = ("MNQ 12-25", "MNQ 03-26"), roll_day: int = 5) -> pd.DataFrame:
     """Random trades on a 0.25 grid with a one-tick book and a volume handover at ``roll_day``.
 
     Both contracts trade every day; the second becomes the volume leader from ``roll_day`` on.
