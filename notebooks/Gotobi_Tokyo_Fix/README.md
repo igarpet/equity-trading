@@ -5,7 +5,8 @@
 | Notebook | Description | Status |
 |---|---|---|
 | `01_gotobi_fix_backtest.ipynb` | Calendar, per-day tick outcomes, mid path, H1 (pre-fix), H2 gates G1–G3 per window, by-year, robustness grid, costs, equity, verdict | Run `610d790`: REPLICATES 2016–2025, NOT_CONFIRMED 2010–2015 → `NO_EDGE`. Correction C1 (engine 0.2.0): rerun pending |
-| `02_long_into_fix_reversal.ipynb` | GTF 02: long 09:25→09:55 JST, reverse into the GTF 01 short. Exploratory gates on 2010–2015 / 2016–2025, long-leg check L, entry-time grid, costs, equity; binding 2026 holdout behind `OPEN_HOLDOUT` | Code ready, not run |
+| `02_long_into_fix_reversal.ipynb` | GTF 02: long 09:25→09:55 JST, reverse into the GTF 01 short. Exploratory gates on 2010–2015 / 2016–2025, long-leg check L, entry-time grid, costs, equity; binding 2026 holdout behind `OPEN_HOLDOUT` | Run `ab27207`: G1–G3 pass on 2016–2025 (exploratory), G2/G3 fail on 2010–2015; long leg not gotobi-specific (diff +0.62, p = 0.12) → `PENDING_HOLDOUT` |
+| `03_small_account_leverage.ipynb` | Sizing only (no gates): $180 account at 10–500:1, Kelly leverage, equity curves with broker stop-out, losses-to-wipe, one-year resampling | Code ready, not run |
 
 Protocols: [`001`](../../discussions/Gotobi_Tokyo_Fix/001_claude_gtf01_preregistration.md) (GTF 01), [`002`](../../discussions/Gotobi_Tokyo_Fix/002_claude_gtf01_correction_c1.md) (correction C1), [`003`](../../discussions/Gotobi_Tokyo_Fix/003_claude_gtf02_preregistration.md) (GTF 02).
 

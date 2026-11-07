@@ -131,3 +131,20 @@ def test_synthetic_long_leg(market_dir):
     out = G.build_day_outcomes(D(2015, 1, 1), D(2015, 6, 30), G.GTFConfig(), root=G.dukascopy_root(), n_jobs=1)
     comb = G.combined_pnl(out, "long_e25", G.grid_key(55, 90, 12.0))
     assert comb[out["day_type"] == "gotobi"].mean() > comb[out["day_type"] == "control"].mean() + 2.0
+
+
+def test_simulate_account_stopout_and_streak():
+    idx = pd.to_datetime(["2024-01-05", "2024-01-10", "2024-01-15"])
+    tr = pd.DataFrame({"long": [0.0, 0.0, 0.0], "short": [-12.0, -12.0, -12.0], "long_px": 150.0, "short_px": 150.0,
+                       "mae_long": 0.0, "mae_short": [12.0, 12.0, 12.0]}, index=idx)
+    # 500x on $180: $90k notional, $6 per pip; a 12-pip stop plus two round trips of commission costs $84.60
+    acc = G.simulate_account(tr, 180.0, 500.0, "full", 35.0, 0.5)
+    assert (acc["event"] == "ok").all() and acc["equity"].iloc[0] == pytest.approx(180 - 72 - 2 * 6.3)
+    assert acc["equity"].iloc[-1] < 30
+    # a 15-pip open loss on the long leg breaches the 50% stop-out before the short is opened
+    acc2 = G.simulate_account(tr.assign(mae_long=15.0), 180.0, 500.0, "full", 35.0, 0.5)
+    assert acc2["event"].iloc[0] == "stopout_long" and acc2["equity"].iloc[0] == pytest.approx(90.0)
+    # 30x: $5,400 rounds down to 5,000 units, $0.333 per pip; three stops cost 3 x (4.00 + 0.70) dollars
+    acc30 = G.simulate_account(tr, 180.0, 30.0, "fixed", 35.0, 0.5)
+    assert (acc30["event"] == "ok").all() and acc30["equity"].iloc[-1] == pytest.approx(180 - 3 * (12 * 5000 * 0.01 / 150 + 2 * 2 * 35 * 5000 / 1e6), rel=1e-6)
+    assert G.longest_losing_streak(pd.Series([1, -1, -1, 2, -1, -1, -1])) == 3

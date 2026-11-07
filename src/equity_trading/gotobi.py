@@ -471,3 +471,94 @@ def write_synthetic(base: Path, start: dt.date, end: dt.date, seed: int = 7, sym
         f.parent.mkdir(parents=True, exist_ok=True)
         synthetic_ticks(d, d in g and is_jp_bank_day(d), seed + n).to_parquet(f, index=False)
     return root
+
+
+# ----------------------------------------------------------------------------- small-account leverage (GTF 02 sizing, reported only)
+def adverse_excursions(days: pd.DataFrame, long_entry_min: int, fix_min: int, exit_min: int, stop_pips: float) -> pd.DataFrame:
+    """Approximate worst open loss of each leg, in pips, from the minute mid path plus half the spread at the fix.
+
+    Long: entry ask minus the lowest mid between entry and the fix. Short: highest mid between the fix and
+    the exit minus the entry bid, capped at the stop. Minute marks miss intra-minute spikes, so these are
+    lower bounds of the true excursion."""
+    half = days["spread_fix_pips"].fillna(0) / 2
+    lc = [f"mid_{m:03d}" for m in range(long_entry_min, fix_min + 1)]
+    sc = [f"mid_{m:03d}" for m in range(fix_min, exit_min + 1)]
+    mae_long = (days[f"long_price_e{long_entry_min}"] - days[lc].min(axis=1)) / PIP + half
+    mae_short = ((days[sc].max(axis=1) - days["entry_price"]) / PIP + half).clip(upper=stop_pips)
+    return pd.DataFrame({"mae_long": mae_long.clip(lower=0), "mae_short": mae_short.clip(lower=0)}, index=days.index)
+
+
+def simulate_account(trades: pd.DataFrame, equity0: float, leverage: float, mode: str = "full",
+                     usd_per_m_side: float = 35.0, stopout: float = 0.5, min_units: int = 1_000,
+                     floor_usd: float = 0.0) -> pd.DataFrame:
+    """Day-by-day account for the GTF 02 long+short trade.
+
+    trades: rows in date order with columns long, short (pips after spread), long_px, short_px
+    (entry prices), mae_long, mae_short (pips).
+    mode 'full': notional = equity x leverage each day (rounded down to min_units);
+    mode 'fixed': notional = equity0 x leverage throughout (reduced if margin no longer allows it).
+    Margin = notional / leverage. If the open loss of a leg takes equity below stopout x margin, the broker
+    liquidates there: the day's loss is equity - stopout x margin and the second leg is not traded.
+    The account stops trading when it cannot open min_units or equity <= floor_usd.
+    """
+    eq_path, units_path, pnl_path, ev = _simulate_arrays(
+        trades[["long", "short"]].to_numpy(float), trades[["long_px", "short_px"]].to_numpy(float),
+        trades[["mae_long", "mae_short"]].to_numpy(float), equity0, leverage, mode, usd_per_m_side,
+        stopout, min_units, floor_usd)
+    names = np.array(["ok", "stopout_long", "stopout_short", "cannot_trade"])
+    out = pd.DataFrame({"equity": eq_path, "units": units_path, "pnl": pnl_path, "event": names[ev]},
+                       index=trades.index)
+    out.index.name = "date"
+    out["drawdown"] = out["equity"] / out["equity"].cummax() - 1
+    return out
+
+
+def _simulate_arrays(pnl, px, mae, equity0, leverage, mode, usd_per_m_side, stopout, min_units, floor_usd):
+    n = len(pnl)
+    eq_path, units_path, pnl_path = np.empty(n), np.zeros(n), np.zeros(n)
+    ev = np.zeros(n, dtype=int)
+    eq = float(equity0)
+    for k in range(n):
+        units = 0.0
+        if eq > floor_usd:
+            units = eq * leverage if mode == "full" else min(equity0 * leverage, eq * leverage)
+            units = np.floor(units / min_units) * min_units
+        if units < min_units:
+            eq_path[k], ev[k] = eq, 3
+            continue
+        margin = units / leverage
+        day = 0.0
+        for leg in (0, 1):
+            pip_usd = units * PIP / px[k, leg]
+            comm = 2 * usd_per_m_side * units / 1e6
+            if eq + day - mae[k, leg] * pip_usd - comm < stopout * margin:
+                day = stopout * margin - eq
+                ev[k] = 1 + leg
+                break
+            day += pnl[k, leg] * pip_usd - comm
+        eq = max(eq + day, 0.0)
+        eq_path[k], units_path[k], pnl_path[k] = eq, units, day
+    return eq_path, units_path, pnl_path, ev
+
+
+def simulate_final_equity(trades: pd.DataFrame, equity0: float, leverage: float, n_sims: int, n_trades: int,
+                          seed: int, mode: str = "full", usd_per_m_side: float = 35.0, stopout: float = 0.5) -> np.ndarray:
+    """Final equity of n_sims sequences of n_trades days drawn with replacement from `trades`."""
+    rng = np.random.default_rng(seed)
+    pnl = trades[["long", "short"]].to_numpy(float)
+    px = trades[["long_px", "short_px"]].to_numpy(float)
+    mae = trades[["mae_long", "mae_short"]].to_numpy(float)
+    out = np.empty(n_sims)
+    for i in range(n_sims):
+        ix = rng.integers(0, len(pnl), n_trades)
+        out[i] = _simulate_arrays(pnl[ix], px[ix], mae[ix], equity0, leverage, mode, usd_per_m_side,
+                                  stopout, 1_000, 0.0)[0][-1]
+    return out
+
+
+def longest_losing_streak(pnl: pd.Series) -> int:
+    best = cur = 0
+    for x in pnl.dropna():
+        cur = cur + 1 if x < 0 else 0
+        best = max(best, cur)
+    return best
