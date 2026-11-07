@@ -43,7 +43,7 @@ import os
 import sys
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
 import numpy as np
@@ -72,6 +72,7 @@ EMPTY = pd.DataFrame({
 })
 
 _local = threading.local()
+STOP = threading.Event()   # set on Ctrl+C: workers stop at the next hour boundary
 
 
 def session() -> requests.Session:
@@ -110,12 +111,14 @@ def fetch_hour(sym: str, day: dt.date, hour: int, retries: int) -> tuple[str, np
         try:
             r = session().get(url, timeout=30)
         except requests.RequestException:
-            time.sleep(min(2 ** attempt, 30))
+            if STOP.wait(min(2 ** attempt, 30)):
+                return "error", None
             continue
         if r.status_code == 404:
             return "missing", None
         if r.status_code != 200:          # 429/5xx: back off and retry
-            time.sleep(min(2 ** attempt, 30))
+            if STOP.wait(min(2 ** attempt, 30)):
+                return "error", None
             continue
         if not r.content:
             return "empty", None          # no ticks in that hour (normal around weekends)
@@ -153,6 +156,8 @@ def download_day(sym: str, day: dt.date, hours: list[int], root: Path,
 
     frames, problems = [], []
     for h in hours:
+        if STOP.is_set():
+            return day, "cancelled", 0, []   # nothing written; a rerun fetches this day
         status, arr = fetch_hour(sym, day, h, retries)
         if status == "ok":
             frames.append(to_frame(arr, day, h, divisor))
@@ -202,30 +207,64 @@ def main() -> int:
     days = [d for d in days if d.weekday() != 5]  # skip Saturdays
 
     print(f"{sym}  {a.start} -> {a.end}  {len(days)} days  hours={a.hours}  -> {root}")
-    t0, counts, ticks = time.time(), {"done": 0, "skipped": 0, "retry": 0}, 0
+    print("Ctrl+C stops cleanly (finished days are kept; rerun the same command to resume).")
+    t0, ticks, i = time.time(), 0, 0
+    counts = {"done": 0, "skipped": 0, "retry": 0, "cancelled": 0}
+    interrupted = False
 
-    with open(gaps_file, "a", newline="") as gf, ThreadPoolExecutor(a.workers) as ex:
+    ex = ThreadPoolExecutor(a.workers)
+    with open(gaps_file, "a", newline="") as gf:
         gw = csv.writer(gf)
         if new_gaps_file:
             gw.writerow(["date", "hour_utc", "status"])
-        futs = [ex.submit(download_day, sym, d, hours, root, DIVISOR[sym], a.retries) for d in days]
-        for i, f in enumerate(as_completed(futs), 1):
+        pending = {ex.submit(download_day, sym, d, hours, root, DIVISOR[sym], a.retries) for d in days}
+
+        def handle(f):
+            nonlocal ticks, i
             day, status, n, problems = f.result()
             counts[status] += 1
             ticks += n
+            i += 1
             if status == "done":
                 for h, s in problems:
                     gw.writerow([day.isoformat(), h, s])
             elif status == "retry":
                 print(f"  network errors on {day}, will retry on next run: {problems}")
-            if i % 50 == 0 or i == len(futs):
+            if i % 50 == 0 or i == len(days):
                 gf.flush()
-                el = time.time() - t0
-                print(f"  {i}/{len(futs)} days | done {counts['done']} skipped {counts['skipped']} "
-                      f"retry {counts['retry']} | {ticks:,} ticks | {el/60:.1f} min")
+                print(f"  {i}/{len(days)} days | done {counts['done']} skipped {counts['skipped']} "
+                      f"retry {counts['retry']} | {ticks:,} ticks | {(time.time() - t0) / 60:.1f} min", flush=True)
+
+        try:
+            while pending:
+                # short timeout so Ctrl+C is delivered promptly (a blocking wait ignores it on Windows)
+                done, pending = wait(pending, timeout=1.0, return_when=FIRST_COMPLETED)
+                for f in done:
+                    handle(f)
+        except KeyboardInterrupt:
+            interrupted = True
+            STOP.set()
+            print("\nStopping: queued days cancelled, running days stop at the next hour "
+                  "(a few seconds; press Ctrl+C again to force-quit).", flush=True)
+            for f in pending:
+                f.cancel()
+            try:
+                while pending:
+                    done, pending = wait(pending, timeout=1.0)
+                    for f in done:
+                        if not f.cancelled():
+                            handle(f)
+            except KeyboardInterrupt:
+                gf.flush()
+                os._exit(130)
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
+            gf.flush()
 
     size = dir_size(root)
-    print(f"\nFinished. New ticks: {ticks:,}. Folder size: {size/1e9:.2f} GB")
+    print(f"\n{'Interrupted' if interrupted else 'Finished'}. New ticks: {ticks:,}. Folder size: {size/1e9:.2f} GB")
+    if interrupted:
+        print("Rerun the same command to continue; completed days are skipped.")
     if counts["retry"]:
         print(f"{counts['retry']} days had network errors -- rerun the same command to fill them.")
     print(f"Permanent gaps logged in {gaps_file}")
