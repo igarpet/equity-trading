@@ -15,3 +15,5 @@ pandas_market_calendars>=4.4
 databento>=0.60
 # P6 only; for a Pascal GPU install from https://download.pytorch.org/whl/cu126 (see notebooks/Deep_Statistical_Arbitrage/README.md)
 # torch==2.14.0
+# Gotobi_Tokyo_Fix: Japanese holiday calendar (GTF 001)
+jpholiday>=0.1.10

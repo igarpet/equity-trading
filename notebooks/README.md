@@ -23,6 +23,7 @@ One folder per research branch, matching `discussions/`. Notebook file names kee
 | [Rank_Space](./Rank_Space/) | Paper P7: Li, Y.-F. & Papanicolaou, G. — Does rank-space mean reversion survive our measured costs (≈ 13 bps round trip in S05b), not 2 bps? Run f0b016d (after correction C1): no edge; rank-space Sharpe 4.5–11.6 is a non-tradable sorting effect, tradable gross ≈ 0 before costs. |
 | [OU_Optimal_Thresholds](./OU_Optimal_Thresholds/) | Paper P8: Bertram, W. K. — Do model-optimal thresholds beat the S05c/S05d rules out of sample? Run d63819a: no improvement, no edge; OU-optimal rules do not fix a mis-specified OU model; fast exits have gross in both windows but far below cost. |
 | [Futures_Order_Flow](./Futures_Order_Flow/) | CME micro index futures only (MNQ/MES/MYM, Lucid prop accounts): does MNQ's own signed taker flow pay its round trip? FOF 01–02: data plan (micros only), Databento (2023–2025) + NinjaTrader export (sealed 2026) + forward recorder, checks C1–C5. Code ready, not run. |
+| [Gotobi_Tokyo_Fix](./Gotobi_Tokyo_Fix/) | GTF 01: USD/JPY gotobi days (Ito & Yamada 2017) and a YouTube rule (sell 09:55 JST, 12-pip stop, exit 10:30). Dukascopy ticks; INDEPENDENT 2010–2015 binding, REPLICATION 2016–2025, 2026 sealed. Code ready, not run. |
 
 Paper-testing order (Iván, 2026-11-04): P1 → P2 → P3 → P4 → P5 → P6 → P7 → P8. Each paper is its own branch; it may use the shared S05 engine and the S05b cost model (documented in its protocol), but not other branches' thresholds or conclusions.
 
