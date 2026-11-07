@@ -25,12 +25,13 @@ import pandas as pd
 
 from .data import vendor_dir, work_dir
 
-GOTOBI_VERSION = "0.1.0"
+GOTOBI_VERSION = "0.2.0"   # 0.2.0: correction C1 (pre-00:00 quote, commission at fill) + GTF 02 long leg
 SYMBOL = "USDJPY"
 PIP = 0.01
 HOLDOUT_START = dt.date(2026, 1, 1)
 MS_MIN = 60_000
 MORNING_END_MS = 2 * 60 * MS_MIN          # keep ticks 00:00-02:00 UTC (09:00-11:00 JST)
+PREV_HOUR_MS = 60 * MS_MIN                # plus the last hour of the previous UTC day (C1)
 BANK_YEAR_END = {(12, 31), (1, 1), (1, 2), (1, 3)}
 
 # Yen interventions by Japan's Ministry of Finance (robustness exclusion only).
@@ -68,6 +69,10 @@ class GTFConfig:
     grid_exit: tuple = (75, 90, 105)
     grid_stop: tuple = (8.0, 12.0, 20.0, None)
     path_minutes: tuple = field(default_factory=lambda: tuple(range(0, 106)))
+    path_max_age_ms: int = 120_000         # mid path: last quote at most 2 minutes old (C1)
+    # GTF 02: long into the fix, then reverse into the GTF 01 short
+    long_entry_min: int = 25               # 00:25 UTC = 09:25 JST
+    long_grid_entry: tuple = (0, 15, 25, 35, 45)
 
 
 WINDOWS = {
@@ -176,18 +181,35 @@ def day_file(root: Path, day: dt.date, symbol: str = SYMBOL) -> Path:
     return root / f"{day:%Y}" / f"{symbol}_{day:%Y-%m-%d}.parquet"
 
 
+def _read_ticks(f: Path, day: dt.date):
+    df = pd.read_parquet(f, columns=["ts", "bid", "ask"])
+    ts = pd.to_datetime(df["ts"], utc=True)
+    t = ((ts - pd.Timestamp(day, tz="UTC")) // pd.Timedelta(milliseconds=1)).to_numpy(np.int64)
+    return t, df["bid"].to_numpy(float), df["ask"].to_numpy(float)
+
+
 def load_morning(root: Path, day: dt.date, symbol: str = SYMBOL, allow_holdout: bool = False):
-    """Ticks 00:00-02:00 UTC as (t_ms since 00:00 UTC, bid, ask) numpy arrays, or None if no file."""
+    """Ticks from 23:00 UTC of the previous day to 02:00 UTC as (t_ms relative to 00:00 UTC of
+    `day`, bid, ask); t < 0 for the previous day's last hour. None if the day has no file.
+
+    The previous hour (C1) supplies the quote standing at 00:00 UTC (09:00 JST); without it the
+    09:00 mid is missing on almost every day.
+    """
     if day >= HOLDOUT_START and not allow_holdout:
         raise HoldoutError(f"{day} is in the sealed holdout (>= {HOLDOUT_START}).")
     f = day_file(root, day, symbol)
     if not f.exists():
         return None
-    df = pd.read_parquet(f, columns=["ts", "bid", "ask"])
-    ts = pd.to_datetime(df["ts"], utc=True)
-    t = ((ts - pd.Timestamp(day, tz="UTC")) // pd.Timedelta(milliseconds=1)).to_numpy(np.int64)
+    t, b, a = _read_ticks(f, day)
     keep = (t >= 0) & (t < MORNING_END_MS)
-    return t[keep], df["bid"].to_numpy(float)[keep], df["ask"].to_numpy(float)[keep]
+    t, b, a = t[keep], b[keep], a[keep]
+    prev = day - dt.timedelta(days=1)
+    fp = day_file(root, prev, symbol)
+    if fp.exists():
+        tp, bp, ap = _read_ticks(fp, day)          # times relative to `day`, so negative
+        kp = (tp >= -PREV_HOUR_MS) & (tp < 0)
+        t, b, a = np.concatenate([tp[kp], t]), np.concatenate([bp[kp], b]), np.concatenate([ap[kp], a])
+    return t, b, a
 
 
 # ----------------------------------------------------------------------------- trade simulation
@@ -231,15 +253,17 @@ def grid_key(e: int, x: int, s) -> str:
 
 def day_outcome(t, bid, ask, cfg: GTFConfig) -> dict:
     """All per-day quantities: grid of short trades, pre-fix long, mid path, spread and price at fix."""
-    rec = {"n_ticks": int(len(t))}
+    rec = {"n_ticks": int((t >= 0).sum())}
     if len(t) == 0:
         return rec
     fix = cfg.entry_min * MS_MIN
     i = int(np.searchsorted(t, fix, "left"))
-    rec["spread_fix_pips"] = (ask[i] - bid[i]) / PIP if i < len(t) and t[i] - fix <= cfg.max_lag_ms else np.nan
-    rec["mid_fix"] = mid_at(t, bid, ask, fix)
+    fill_ok = i < len(t) and t[i] - fix <= cfg.max_lag_ms
+    rec["spread_fix_pips"] = (ask[i] - bid[i]) / PIP if fill_ok else np.nan
+    rec["entry_price"] = bid[i] if fill_ok else np.nan          # short fill at 09:55 JST; prices commission (C1)
+    rec["mid_fix"] = mid_at(t, bid, ask, fix, cfg.path_max_age_ms)
     for m in cfg.path_minutes:
-        rec[f"mid_{m:03d}"] = mid_at(t, bid, ask, m * MS_MIN)
+        rec[f"mid_{m:03d}"] = mid_at(t, bid, ask, m * MS_MIN, cfg.path_max_age_ms)
     seen = set()
     for e in (*cfg.grid_entry, cfg.entry_min):
         for x in (*cfg.grid_exit, cfg.exit_min):
@@ -253,20 +277,25 @@ def day_outcome(t, bid, ask, cfg: GTFConfig) -> dict:
                 if (e, x, s) == (cfg.entry_min, cfg.exit_min, cfg.stop_pips):
                     rec["base_reason"] = why
     rec["prefix_long_pips"] = long_trade(t, bid, ask, 0, fix, cfg.max_lag_ms)
+    # GTF 02: long from e to the fix (buy ask, sell bid at the same tick the short is sold)
+    for e in sorted({*cfg.long_grid_entry, cfg.long_entry_min}):
+        rec[f"long_e{e}"] = long_trade(t, bid, ask, e * MS_MIN, fix, cfg.max_lag_ms)
+        i0 = int(np.searchsorted(t, e * MS_MIN, "left"))
+        rec[f"long_price_e{e}"] = ask[i0] if i0 < len(t) and t[i0] - e * MS_MIN <= cfg.max_lag_ms else np.nan
     return rec
 
 
-def _one_day(root, day, cfg):
-    data = load_morning(root, day)
+def _one_day(root, day, cfg, allow_holdout=False):
+    data = load_morning(root, day, allow_holdout=allow_holdout)
     if data is None:
         return {"date": day, "has_file": False}
     return {"date": day, "has_file": True, **day_outcome(*data, cfg)}
 
 
 def build_day_outcomes(start: dt.date, end: dt.date, cfg: GTFConfig, root: Path | None = None,
-                       n_jobs: int = 4, refresh: bool = False) -> pd.DataFrame:
+                       n_jobs: int = 4, refresh: bool = False, allow_holdout: bool = False) -> pd.DataFrame:
     """Day table joined with per-day outcomes; cached under <EQUITY_TRADING_DIR>/EquityTrading/Gotobi/."""
-    if end >= HOLDOUT_START:
+    if end >= HOLDOUT_START and not allow_holdout:
         raise HoldoutError(f"end {end} reaches the sealed holdout.")
     root = root or dukascopy_root()
     cache = work_dir() / "Gotobi" / f"day_outcomes_{GOTOBI_VERSION}_{root.name}_{start}_{end}.parquet"
@@ -274,7 +303,7 @@ def build_day_outcomes(start: dt.date, end: dt.date, cfg: GTFConfig, root: Path 
         return pd.read_parquet(cache)
     table = day_table(start, end)
     from joblib import Parallel, delayed
-    recs = Parallel(n_jobs=n_jobs)(delayed(_one_day)(root, d, cfg) for d in table["date"])
+    recs = Parallel(n_jobs=n_jobs)(delayed(_one_day)(root, d, cfg, allow_holdout) for d in table["date"])
     out = table.merge(pd.DataFrame(recs), on="date", how="left")
     out["year"] = pd.to_datetime(out["date"]).dt.year
     cache.parent.mkdir(parents=True, exist_ok=True)
@@ -376,6 +405,29 @@ def gates(window: str, g1_hac: dict, g1_boot: list[dict], g2_diff: dict, g2_rand
     g2 = g2_diff["diff"] > 0 and g2_diff["p_one_sided"] <= alpha and g2_rand["p_upper"] <= alpha
     g3 = all(b["lower"] > 0 for b in g3_boot) and g3_mean_2x > 0
     return {"window": window, "G1_statistical": bool(g1), "G2_calendar": bool(g2), "G3_economic": bool(g3)}
+
+
+def combined_pnl(days: pd.DataFrame, long_col: str, short_col: str) -> pd.Series:
+    """GTF 02 per-day P&L after spread: long into the fix plus the short after it. A day counts
+    only if both legs fill (the reversal is one decision)."""
+    return days[long_col] + days[short_col]
+
+
+def combined_net(days: pd.DataFrame, long_col: str, short_col: str, long_price_col: str,
+                 usd_per_m_side: float, extra_slip_pips: float = 0.0) -> pd.Series:
+    """Combined P&L minus both round trips' commission (each priced at its own entry fill) and slippage."""
+    return (combined_pnl(days, long_col, short_col)
+            - commission_pips(days[long_price_col], usd_per_m_side)
+            - commission_pips(days["entry_price"], usd_per_m_side)
+            - 4.0 * extra_slip_pips)
+
+
+def holdout_gates(hac: dict, diff: dict, net_mean: float, alpha: float = 0.05) -> dict:
+    """GTF 002 §4 holdout gates (low power, alpha 0.05)."""
+    hg1 = hac["mean"] > 0 and hac["p_one_sided"] <= alpha
+    hg2 = diff["diff"] > 0 and diff["p_one_sided"] <= alpha
+    hg3 = net_mean > 0
+    return {"HG1_statistical": bool(hg1), "HG2_calendar": bool(hg2), "HG3_economic": bool(hg3)}
 
 
 def verdict(g: dict[str, dict]) -> dict:

@@ -103,3 +103,31 @@ def test_synthetic_end_to_end(market_dir):
     c = out.loc[out["day_type"] == "control", k].mean()
     assert g > c + 1.5                       # injected -3 pip post-fix move on gotobi days
     assert out.loc[out["has_file"], "spread_fix_pips"].round(6).eq(0.3).all()
+
+
+def test_c1_previous_hour_supplies_0900_quote(tmp_path):
+    root = tmp_path / "USDJPY" / "hours_00-01-02-22-23"
+    prev, day = D(2024, 3, 4), D(2024, 3, 5)
+    for d, secs, px in [(prev, [23 * 3600 + 3590], 150.000), (day, [30, 55 * 60, 90 * 60], 150.100)]:
+        f = G.day_file(root, d); f.parent.mkdir(parents=True, exist_ok=True)
+        ts = pd.Timestamp(d, tz="UTC") + pd.to_timedelta(secs, unit="s")
+        pd.DataFrame({"ts": ts, "bid": px, "ask": px + 0.003}).to_parquet(f, index=False)
+    t, bid, ask = G.load_morning(root, day)
+    assert t[0] == -10_000 and (t >= 0).sum() == 3
+    assert G.mid_at(t, bid, ask, 0, 120_000) == pytest.approx(150.0015)
+    out = G.day_outcome(t, bid, ask, G.GTFConfig())
+    assert out["entry_price"] == pytest.approx(150.100) and out["n_ticks"] == 3
+
+
+def test_combined_net_charges_two_round_trips():
+    d = pd.DataFrame({"long_e25": [1.0], "short": [2.0], "long_price_e25": [150.0], "entry_price": [150.0]})
+    net = G.combined_net(d, "long_e25", "short", "long_price_e25", 35.0, 0.1)
+    assert net.iloc[0] == pytest.approx(3.0 - 2 * 1.05 - 0.4)
+
+
+def test_synthetic_long_leg(market_dir):
+    base = market_dir / "Dukascopy"
+    G.write_synthetic(base, D(2015, 1, 1), D(2015, 6, 30))
+    out = G.build_day_outcomes(D(2015, 1, 1), D(2015, 6, 30), G.GTFConfig(), root=G.dukascopy_root(), n_jobs=1)
+    comb = G.combined_pnl(out, "long_e25", G.grid_key(55, 90, 12.0))
+    assert comb[out["day_type"] == "gotobi"].mean() > comb[out["day_type"] == "control"].mean() + 2.0

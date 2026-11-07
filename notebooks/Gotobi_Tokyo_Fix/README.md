@@ -4,11 +4,12 @@
 
 | Notebook | Description | Status |
 |---|---|---|
-| `01_gotobi_fix_backtest.ipynb` | Calendar, per-day tick outcomes, mid path, H1 (pre-fix), H2 gates G1–G3 per window, by-year, robustness grid, costs, equity, verdict | Code ready, not run on real data |
+| `01_gotobi_fix_backtest.ipynb` | Calendar, per-day tick outcomes, mid path, H1 (pre-fix), H2 gates G1–G3 per window, by-year, robustness grid, costs, equity, verdict | Run `610d790`: REPLICATES 2016–2025, NOT_CONFIRMED 2010–2015 → `NO_EDGE`. Correction C1 (engine 0.2.0): rerun pending |
+| `02_long_into_fix_reversal.ipynb` | GTF 02: long 09:25→09:55 JST, reverse into the GTF 01 short. Exploratory gates on 2010–2015 / 2016–2025, long-leg check L, entry-time grid, costs, equity; binding 2026 holdout behind `OPEN_HOLDOUT` | Code ready, not run |
 
-Protocol: [`001_claude_gtf01_preregistration.md`](../../discussions/Gotobi_Tokyo_Fix/001_claude_gtf01_preregistration.md).
+Protocols: [`001`](../../discussions/Gotobi_Tokyo_Fix/001_claude_gtf01_preregistration.md) (GTF 01), [`002`](../../discussions/Gotobi_Tokyo_Fix/002_claude_gtf01_correction_c1.md) (correction C1), [`003`](../../discussions/Gotobi_Tokyo_Fix/003_claude_gtf02_preregistration.md) (GTF 02).
 
-**Windows.** INDEPENDENT 2010–2015 (binding), REPLICATION 2016–2025. 2026 sealed (refused in code).
+**Windows.** GTF 01: INDEPENDENT 2010–2015 (binding), REPLICATION 2016–2025. GTF 02: both exploratory; the 2026 holdout is binding (one look, `allow_holdout=True` only in notebook 02's holdout section).
 
 **Setup.**
 - `pip install -r requirements.txt` (adds `jpholiday`).
