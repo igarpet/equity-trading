@@ -1,6 +1,6 @@
 {
   "study": "GTF01",
-  "gotobi_version": "0.1.0",
+  "gotobi_version": "0.2.0",
   "synthetic": false,
   "data_root": "D:\\MarketData\\Dukascopy\\USDJPY\\hours_00-01-02-22-23",
   "windows": {
@@ -44,6 +44,15 @@
       12.0,
       20.0,
       null
+    ],
+    "path_max_age_ms": 120000,
+    "long_entry_min": 25,
+    "long_grid_entry": [
+      0,
+      15,
+      25,
+      35,
+      45
     ]
   },
   "h1": {
@@ -80,13 +89,13 @@
       "welch_p": 0.19768271670630075,
       "random_cal_max": 1.8628297362110484,
       "random_cal_p": 0.21257874212578742,
-      "commission_pips_mean": NaN,
-      "mean_net_c35": 0.10284370023975906,
+      "commission_pips_mean": 0.6683618800959232,
+      "mean_net_c35": 0.10286114148676137,
       "boot_net_lower": [
-        -0.6688291903477381,
-        -0.6502877145084373
+        -0.6688144072542127,
+        -0.650272226378941
       ],
-      "mean_net_c70": -0.5655356211031667
+      "mean_net_c70": -0.565500738609162
     },
     "REPLICATION": {
       "trades": 704,
@@ -103,13 +112,13 @@
       "welch_p": 3.186620437611862e-06,
       "random_cal_max": 2.2671874999999777,
       "random_cal_p": 9.999000099990002e-05,
-      "commission_pips_mean": 0.8616587634560907,
-      "mean_net_c35": 1.7791982144886356,
+      "commission_pips_mean": 0.8611302855113636,
+      "mean_net_c35": 1.7792106235795444,
       "boot_net_lower": [
-        0.7953487759055469,
-        0.7585684214665833
+        0.7953629903054049,
+        0.7585799517045094
       ],
-      "mean_net_c70": 0.9180555198863629
+      "mean_net_c70": 0.9180803380681811
     }
   },
   "replication_2016_2025": "REPLICATES",

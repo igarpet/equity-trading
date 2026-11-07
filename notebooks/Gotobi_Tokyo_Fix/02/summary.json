@@ -1,0 +1,166 @@
+{
+  "study": "GTF02",
+  "gotobi_version": "0.2.0",
+  "synthetic": false,
+  "data_root": "D:\\MarketData\\Dukascopy\\USDJPY\\hours_00-01-02-22-23",
+  "rule": {
+    "long": "09:25-09:55 JST",
+    "short": "09:55-10:30 JST stop 12.0"
+  },
+  "exploratory_gates": {
+    "EXPLORATORY-A": {
+      "window": "EXPLORATORY-A",
+      "G1_statistical": true,
+      "G2_calendar": false,
+      "G3_economic": false
+    },
+    "EXPLORATORY-B": {
+      "window": "EXPLORATORY-B",
+      "G1_statistical": true,
+      "G2_calendar": true,
+      "G3_economic": true
+    }
+  },
+  "long_leg_L": {
+    "EXPLORATORY-A": {
+      "long_net35_mean": 0.08765314492750538,
+      "hac_p": 0.41095932068518476,
+      "L_pass": false
+    },
+    "EXPLORATORY-B": {
+      "long_net35_mean": 0.9472904308131427,
+      "hac_p": 0.021446223150681478,
+      "L_pass": true
+    }
+  },
+  "stats": {
+    "EXPLORATORY-A|combined": {
+      "trades": 414,
+      "mean": 1.5480676328501606,
+      "hac_t": 2.6948757563777153,
+      "hac_p": 0.0035207440878315707,
+      "win_rate": 0.5579710144927537,
+      "boot_lower": [
+        0.612,
+        0.732
+      ],
+      "control_mean": 0.5613060428850138,
+      "diff": 0.9867615899651467,
+      "welch_p": 0.07544154714021774,
+      "random_cal_p": 0.0658934106589341,
+      "mean_net_c35": 0.21076059661827667,
+      "boot_net_lower": [
+        -0.732,
+        -0.612
+      ],
+      "mean_net_c70": -1.1265464396136076
+    },
+    "EXPLORATORY-A|long 09:25-09:55": {
+      "trades": 414,
+      "mean": 0.7562801932366842,
+      "hac_t": 1.9402192777393164,
+      "hac_p": 0.026176523325382443,
+      "win_rate": 0.5603864734299517,
+      "boot_lower": [
+        0.099,
+        0.204
+      ],
+      "control_mean": 0.19035087719299243,
+      "diff": 0.5659293160436918,
+      "welch_p": 0.11184643547150482,
+      "random_cal_p": 0.100989901009899,
+      "mean_net_c35": 0.08765314492750538,
+      "boot_net_lower": [
+        -0.564,
+        -0.461
+      ],
+      "mean_net_c70": NaN
+    },
+    "EXPLORATORY-A|short (GTF 01)": {
+      "trades": 414,
+      "mean": 0.7917874396134765,
+      "hac_t": 1.8107425397619978,
+      "hac_p": 0.03509035729442388,
+      "win_rate": 0.5362318840579711,
+      "boot_lower": [
+        0.015,
+        0.047
+      ],
+      "control_mean": 0.3709551656920214,
+      "diff": 0.4208322739214551,
+      "welch_p": 0.20087850491229872,
+      "random_cal_p": 0.20407959204079593,
+      "mean_net_c35": 0.12310745169077111,
+      "boot_net_lower": [
+        -0.661,
+        -0.636
+      ],
+      "mean_net_c70": NaN
+    },
+    "EXPLORATORY-B|combined": {
+      "trades": 701,
+      "mean": 4.47774607703283,
+      "hac_t": 6.219563310167787,
+      "hac_p": 2.4927021830275826e-10,
+      "win_rate": 0.6219686162624821,
+      "boot_lower": [
+        3.029,
+        3.076
+      ],
+      "control_mean": 1.4908881199538782,
+      "diff": 2.9868579570789517,
+      "welch_p": 4.0508854738232245e-05,
+      "random_cal_p": 0.00029997000299970003,
+      "mean_net_c35": 2.7556525706134294,
+      "boot_net_lower": [
+        1.306,
+        1.354
+      ],
+      "mean_net_c70": 1.0335590641940282
+    },
+    "EXPLORATORY-B|long 09:25-09:55": {
+      "trades": 701,
+      "mean": 1.808273894436538,
+      "hac_t": 3.8735643871578733,
+      "hac_p": 5.3627526565164844e-05,
+      "win_rate": 0.5848787446504993,
+      "boot_lower": [
+        0.919,
+        1.026
+      ],
+      "control_mean": 1.190945790080737,
+      "diff": 0.6173281043558005,
+      "welch_p": 0.12286188785379407,
+      "random_cal_p": 0.1312868713128687,
+      "mean_net_c35": 0.9472904308131427,
+      "boot_net_lower": [
+        0.058,
+        0.154
+      ],
+      "mean_net_c70": NaN
+    },
+    "EXPLORATORY-B|short (GTF 01)": {
+      "trades": 701,
+      "mean": 2.6694721825962917,
+      "hac_t": 5.513779177783411,
+      "hac_p": 1.7560460666166234e-08,
+      "win_rate": 0.5934379457917262,
+      "boot_lower": [
+        1.66,
+        1.613
+      ],
+      "control_mean": 0.2999423298731409,
+      "diff": 2.3695298527231508,
+      "welch_p": 2.7665385428958288e-06,
+      "random_cal_p": 9.999000099990002e-05,
+      "mean_net_c35": 1.808362139800287,
+      "boot_net_lower": [
+        0.801,
+        0.764
+      ],
+      "mean_net_c70": NaN
+    }
+  },
+  "holdout": null,
+  "verdict": "PENDING_HOLDOUT"
+}
