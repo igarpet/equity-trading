@@ -1,0 +1,20 @@
+{
+ "version": "FOF-01-0.2.0",
+ "synthetic": false,
+ "ledger_spend_usd": 0.0,
+ "budget_usd": 115.0,
+ "C1_coverage": {},
+ "C2_time_zone": {},
+ "C3_signing": {},
+ "C4_unsigned": {},
+ "C5_roll": {},
+ "gates": {
+  "C1": false,
+  "C2": false,
+  "C3": false,
+  "C4": false,
+  "C5": false
+ },
+ "holdout_months": {},
+ "data_ready_for_FOF_003": false
+}
