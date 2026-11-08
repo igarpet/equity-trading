@@ -14,8 +14,8 @@ FX_Intraday_Seasonality/
 
 | Notebook | Description | Status |
 |---|---|---|
-| `<PAIR>/01_discovery` | download-complete check, candle close check vs USD/JPY ticks, stacked day per clock and per year, activity and spread by minute, 15-minute block t and year consistency, 2,704-interval scan (D1 BH within the pair, D2 years, D3 cost) with t-map, frozen candidates, 20 rotated-day placebos (D0) | EURUSD run `5e5a28d`: 45 intervals pass D1–D3, placebos 0 → `STRUCTURE_FOUND`; 2 candidates frozen, neither passes pooled Bonferroni. Other pairs not run |
-| `<PAIR>/02_confirmation` | frozen candidates traded at quoted prices on 2021–2025, gates K1–K4, by year, cumulative net, shrinkage | after `<PAIR>/01/` is committed |
+| `<PAIR>/01_discovery` | download-complete check, candle close check vs USD/JPY ticks, stacked day per clock and per year, activity and spread by minute, 15-minute block t and year consistency, 2,704-interval scan (D1 BH within the pair, D2 years, D3 cost) with t-map, frozen candidates, 20 rotated-day placebos (D0) | EURUSD `5e5a28d`: 45 intervals pass D1–D3, placebos 0 → `STRUCTURE_FOUND`, 2 candidates. GBPUSD `08b8717`: 0 pass D1 → `NO_STRUCTURE`. Other pairs not run |
+| `<PAIR>/02_confirmation` | frozen candidates traded at quoted prices on 2021–2025, gates K1–K4, by year, cumulative net, shrinkage | EURUSD `08b8717`: both `NOT_CONFIRMED` (EURUSD-01 net −0.55 bp, negative every year; EURUSD-02 net +0.96 bp, fails K2 by 0.02–0.04 bp, 2024–2025 negative). GBPUSD: nothing to confirm |
 
 Protocols: [`001`](../../discussions/FX_Intraday_Seasonality/001_claude_fxs01_preregistration.md) (design), [`002`](../../discussions/FX_Intraday_Seasonality/002_claude_fxs01_amendment_per_pair.md) (one study per pair).
 
