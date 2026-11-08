@@ -1,0 +1,14 @@
+,0
+end,2026-11-06
+trades,60
+combined_mean,1.3949999999997924
+hac_p,0.2945382343588565
+control_mean,1.571724137930934
+welch_p,0.5234114304728668
+combined_net35_mean,-0.8242251666668742
+long_net35_mean,-1.3129530333335462
+short_mean,1.5983333333333387
+long_mean,-0.2033333333335463
+HG1_statistical,False
+HG2_calendar,False
+HG3_economic,False
