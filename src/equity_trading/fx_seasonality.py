@@ -30,7 +30,7 @@ import pandas as pd
 
 from .data import vendor_dir, work_dir
 
-FXS_VERSION = "0.1.0"
+FXS_VERSION = "0.2.0"   # 0.2.0: per-pair families (FXS 002), completeness check
 NY = "America/New_York"
 MAJORS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD")
 CROSSES = ("EURGBP", "EURCHF", "EURJPY", "GBPJPY", "AUDJPY", "CADJPY", "CADCHF", "AUDNZD")
@@ -51,6 +51,10 @@ class WindowError(RuntimeError):
     """Raised when discovery code would read confirmation data."""
 
 
+class IncompleteDataError(RuntimeError):
+    """Raised when a pair's day files for the requested window are not all downloaded yet."""
+
+
 @dataclass(frozen=True)
 class FXSConfig:
     """Pre-registered specification (discussions/FX_Intraday_Seasonality/001_claude_fxs01_preregistration.md)."""
@@ -61,7 +65,8 @@ class FXSConfig:
     fdr_q: float = 0.05                  # discovery Benjamini-Hochberg, all pairs x clocks x intervals
     min_years_same_sign: int = 4         # of 5 discovery years
     commission_bps_rt: float = 0.70      # $35 per $1M per side
-    max_candidates: int = 40
+    max_candidates: int = 10             # per pair (FXS 002; was 40 over all pairs)
+    min_file_share: float = 0.99         # share of expected day files that must exist
     n_placebo: int = 20
     conf_fdr_q: float = 0.05             # confirmation Benjamini-Hochberg across candidates
     alpha: float = 0.025
@@ -87,6 +92,44 @@ def candles_root(pair: str) -> Path:
     return base / pair / "candles_m1"
 
 
+def day_files(pair: str, start: dt.date, end: dt.date) -> list[Path]:
+    """Existing candle files for UTC days start..end, in date order."""
+    root, out, d = candles_root(pair), [], start
+    while d <= end:
+        f = root / f"{d:%Y}" / f"{pair}_{d:%Y-%m-%d}.parquet"
+        if f.exists():
+            out.append(f)
+        d += dt.timedelta(days=1)
+    return out
+
+
+def download_coverage(pair: str, start: dt.date, end: dt.date) -> pd.DataFrame:
+    """Per year: Monday-Friday UTC days expected vs day files present."""
+    files = {f.stem.split("_")[-1] for f in day_files(pair, start, end)}
+    days = pd.bdate_range(start, end)
+    df = pd.DataFrame({"year": days.year, "present": [d.strftime("%Y-%m-%d") in files for d in days]})
+    out = df.groupby("year")["present"].agg(expected="size", present="sum")
+    out["share"] = out["present"] / out["expected"]
+    return out
+
+
+def file_coverage(pair: str, start: dt.date, end: dt.date) -> dict:
+    """Expected day files for a window (UTC days start-1 .. end, Saturdays excluded, as the downloader
+    fetches them) and which are missing. Missing days are either still downloading or logged gaps."""
+    exp, d = [], start - dt.timedelta(days=1)
+    while d <= end:
+        if d.weekday() != 5:
+            exp.append(d)
+        d += dt.timedelta(days=1)
+    have = {f.stem.split("_")[-1] for f in day_files(pair, exp[0], exp[-1])}
+    missing = [x for x in exp if x.isoformat() not in have]
+    gaps = candles_root(pair) / "_gaps.csv"
+    logged = set(pd.read_csv(gaps)["date"].astype(str)) if gaps.exists() and gaps.stat().st_size > 20 else set()
+    return {"pair": pair, "expected": len(exp), "present": len(exp) - len(missing), "missing": missing,
+            "missing_logged_as_gap": [x for x in missing if x.isoformat() in logged],
+            "share": (len(exp) - len(missing)) / len(exp)}
+
+
 def _guard(start: dt.date, end: dt.date, stage: str) -> None:
     if end >= HOLDOUT_START:
         raise HoldoutError(f"{end} reaches the sealed holdout (>= {HOLDOUT_START}).")
@@ -94,23 +137,30 @@ def _guard(start: dt.date, end: dt.date, stage: str) -> None:
         raise WindowError(f"discovery must end before {CONFIRMATION[0]}; got {end}.")
 
 
-def load_minutes(pair: str, start: dt.date, end: dt.date, stage: str, refresh: bool = False) -> pd.DataFrame:
+def load_minutes(pair: str, start: dt.date, end: dt.date, stage: str, refresh: bool = False,
+                 min_file_share: float = 0.0) -> pd.DataFrame:
     """UTC minute series (index: minute start) with columns bid, ask (candle close, forward-filled) and
-    tick (bool: the minute had quotes). Reads UTC day files start-1 .. end (enough for both clocks)."""
+    tick (bool: the minute had quotes). Reads UTC day files start-1 .. end (enough for both clocks).
+
+    With min_file_share > 0, refuses (IncompleteDataError) while fewer than that share of the expected
+    day files exist, so a pair that is still downloading is not analysed on partial data."""
     _guard(start, end, stage)
-    cache = work_dir() / "FXSeasonality" / "minutes" / f"{pair}_{start}_{end}_{FXS_VERSION}.parquet"
+    if min_file_share > 0:
+        cov = file_coverage(pair, start, end)
+        if cov["share"] < min_file_share:
+            raise IncompleteDataError(
+                f"{pair}: {cov['present']}/{cov['expected']} day files for {start}..{end} ({cov['share']:.1%}); "
+                "wait for the download to finish, or rerun it to fill gaps.")
+    files = day_files(pair, start - dt.timedelta(days=1), end)
+    if not files:
+        raise FileNotFoundError(f"No candle files for {pair} under {candles_root(pair)}")
+    # the key includes the file count and last file, so a cache built during a running download is not reused
+    last = files[-1].stem.split("_")[-1]
+    cache = (work_dir() / "FXSeasonality" / "minutes"
+             / f"{pair}_{start}_{end}_{FXS_VERSION}_n{len(files)}_{last}.parquet")
     if cache.exists() and not refresh:
         return pd.read_parquet(cache)
-    root = candles_root(pair)
-    frames = []
-    d = start - dt.timedelta(days=1)
-    while d <= end:
-        f = root / f"{d:%Y}" / f"{pair}_{d:%Y-%m-%d}.parquet"
-        if f.exists():
-            frames.append(pd.read_parquet(f, columns=["ts", "bid_c", "ask_c", "bid_v", "ask_v"]))
-        d += dt.timedelta(days=1)
-    if not frames:
-        raise FileNotFoundError(f"No candle files for {pair} under {root}")
+    frames = [pd.read_parquet(f, columns=["ts", "bid_c", "ask_c", "bid_v", "ask_v"]) for f in files]
     df = pd.concat(frames, ignore_index=True)
     df["ts"] = pd.to_datetime(df["ts"], utc=True)
     df = df.drop_duplicates("ts").set_index("ts").sort_index()
@@ -186,7 +236,7 @@ def build_panel(minutes: pd.DataFrame, pair: str, clock: str, start: dt.date, en
 def load_panels(pairs, start: dt.date, end: dt.date, stage: str, cfg: FXSConfig, clocks=CLOCKS) -> dict:
     out = {}
     for p in pairs:
-        m = load_minutes(p, start, end, stage)
+        m = load_minutes(p, start, end, stage, min_file_share=cfg.min_file_share)
         for c in clocks:
             out[(p, c)] = build_panel(m, p, c, start, end, cfg.min_coverage)
     return out
@@ -288,8 +338,9 @@ def _overlap(x: list, y: list) -> bool:
 
 
 def select_candidates(scan: pd.DataFrame, cfg: FXSConfig) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Apply D1 (BH over every test), D2 (year consistency), D3 (|mean| > median cost), then keep, per pair,
-    the strongest non-overlapping intervals (across both clocks), at most cfg.max_candidates in total."""
+    """Apply D1 (BH over every test in `scan`: one pair's 2,704 tests under FXS 002), D2 (year consistency),
+    D3 (|mean| > median cost), then keep the strongest non-overlapping intervals per pair (across both
+    clocks), at most cfg.max_candidates per pair."""
     scan = scan.copy()
     scan["D1"], scan["q"] = bh_reject(scan["p"].to_numpy(), cfg.fdr_q)
     scan["D2"] = scan["years_same_sign"] >= cfg.min_years_same_sign
@@ -299,14 +350,13 @@ def select_candidates(scan: pd.DataFrame, cfg: FXSConfig) -> tuple[pd.DataFrame,
     kept, segs = [], {}
     for ix, r in surv.iterrows():
         sg = _utc_segments(r["clock"], int(r["start"]), int(r["end"]))
-        if any(_overlap(sg, other) for other in segs.get(r["pair"], [])):
+        have = segs.setdefault(r["pair"], [])
+        if len(have) >= cfg.max_candidates or any(_overlap(sg, other) for other in have):
             continue
-        segs.setdefault(r["pair"], []).append(sg)
+        have.append(sg)
         kept.append(ix)
-        if len(kept) >= cfg.max_candidates:
-            break
     cand = surv.loc[kept].reset_index(drop=True)
-    cand.insert(0, "id", [f"FXS{i + 1:02d}" for i in range(len(cand))])
+    cand.insert(0, "id", [f"{p}-{i + 1:02d}" for p, i in zip(cand["pair"], cand.groupby("pair").cumcount())])
     cand["direction"] = np.sign(cand["mean_bps"]).astype(int)
     cand["start_time"] = [slot_label(c, s) for c, s in zip(cand["clock"], cand["start"])]
     cand["end_time"] = [slot_label(c, e) for c, e in zip(cand["clock"], cand["end"])]
@@ -437,3 +487,36 @@ def write_synthetic_candles(base: Path, pair: str, start: dt.date, end: dt.date,
             df.to_parquet(f, index=False)
         d += dt.timedelta(days=1)
     return root
+
+
+# ----------------------------------------------------------------------------- per-pair exploration (descriptive)
+def yearly_profiles(panel: Panel) -> pd.DataFrame:
+    """Cumulative mean log-mid return (bps) from boundary 0, one column per year."""
+    lp = panel.logmid
+    C = (lp - lp[:, :1]) * 1e4
+    return pd.DataFrame({int(y): C[panel.years == y].mean(axis=0) for y in np.unique(panel.years)},
+                        index=pd.RangeIndex(SLOTS + 1, name="boundary"))
+
+
+def block_consistency(panel: Panel, block: int = 15) -> pd.DataFrame:
+    """For each block of `block` minutes: mean (bps), t (no lags), share of days up, and number of years
+    whose mean has the sign of the overall mean."""
+    lp = panel.logmid
+    s = np.arange(0, SLOTS, block)
+    R = (lp[:, s + block] - lp[:, s]) * 1e4
+    m, se, t = nw_tstats(R, 0)
+    yrs = panel.years
+    same = sum((np.sign(R[yrs == y].mean(axis=0)) == np.sign(m)).astype(int) for y in np.unique(yrs))
+    return pd.DataFrame({"start": s, "time": [slot_label(panel.clock, k) for k in s], "mean_bps": m, "t": t,
+                         "share_up": (R > 0).mean(axis=0), "years_same_sign": same, "n_years": len(np.unique(yrs))})
+
+
+def bonferroni_t(n_tests: int, alpha: float = 0.05) -> float:
+    """|t| above which a two-sided normal test is significant after Bonferroni over n_tests. Any interval
+    beyond it also passes Benjamini-Hochberg over the same n_tests."""
+    from scipy.stats import norm
+    return float(norm.isf(alpha / (2 * n_tests)))
+
+
+def pooled_n_tests(cfg: FXSConfig) -> int:
+    return len(intervals(cfg)) * len(CLOCKS) * len(PAIRS)

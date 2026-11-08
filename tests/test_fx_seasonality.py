@@ -99,6 +99,7 @@ def test_synthetic_drift_found_and_placebo_clean(market_dir):
     scan = pd.concat([F.scan_panel(p, cfg) for p in panels.values()], ignore_index=True)
     s, cand = F.select_candidates(scan, cfg)
     assert len(cand) >= 1 and cand.iloc[0]["pair"] == "EURUSD" and cand.iloc[0]["direction"] == 1
+    assert cand.iloc[0]["id"] == "EURUSD-01"
     top = cand.iloc[0]
     assert top["start_time"] >= "NY 07:30" and top["end_time"] <= "NY 09:30" or top["clock"] == "UTC"
     assert (cand["pair"] == "USDJPY").sum() == 0
@@ -107,3 +108,39 @@ def test_synthetic_drift_found_and_placebo_clean(market_dir):
     # rotated days keep each day's total drift (here an extreme +4 bps/day), so a few long placebo
     # intervals can pass; the time-of-day structure must still dominate
     assert pl["D1_D2_D3"].max() * 5 < real
+
+
+def test_cache_not_reused_while_downloading(market_dir):
+    base = market_dir / "Dukascopy"
+    F.write_synthetic_candles(base, "EURUSD", D(2016, 1, 1), D(2016, 1, 20), seed=1)
+    a = F.load_minutes("EURUSD", D(2016, 1, 4), D(2016, 2, 26), "discovery")
+    F.write_synthetic_candles(base, "EURUSD", D(2016, 1, 21), D(2016, 2, 26), seed=2)
+    b = F.load_minutes("EURUSD", D(2016, 1, 4), D(2016, 2, 26), "discovery")
+    assert b.index[-1] > a.index[-1]
+    cov = F.download_coverage("EURUSD", D(2016, 1, 1), D(2016, 12, 31))
+    assert cov.loc[2016, "present"] == 41 and cov.loc[2016, "expected"] == 261
+
+
+def test_bonferroni_and_block_consistency(market_dir):
+    assert F.bonferroni_t(F.pooled_n_tests(F.FXSConfig())) == pytest.approx(4.84, abs=0.02)
+    base = market_dir / "Dukascopy"
+    F.write_synthetic_candles(base, "EURUSD", D(2016, 1, 1), D(2017, 12, 31), seed=4, drift_bps=4.0)
+    m = F.load_minutes("EURUSD", D(2016, 1, 4), D(2017, 12, 29), "discovery")
+    p = F.build_panel(m, "EURUSD", "NY", D(2016, 1, 4), D(2017, 12, 29), 0.8)
+    bc = F.block_consistency(p)
+    top = bc.loc[bc["t"].idxmax()]
+    assert top["time"] >= "NY 08:00" and top["time"] < "NY 09:00" and top["years_same_sign"] == 2
+    yp = F.yearly_profiles(p)
+    assert list(yp.columns) == [2016, 2017]
+
+
+def test_incomplete_download_refused(market_dir):
+    base = market_dir / "Dukascopy"
+    F.write_synthetic_candles(base, "EURUSD", D(2015, 12, 28), D(2016, 6, 30), seed=1)
+    cfg = F.FXSConfig()
+    with pytest.raises(F.IncompleteDataError):
+        F.load_panels(["EURUSD"], *F.DISCOVERY, "discovery", cfg)
+    cov = F.file_coverage("EURUSD", *F.DISCOVERY)
+    assert cov["present"] < cov["expected"] and D(2018, 1, 2) in cov["missing"]
+    assert F.file_coverage("EURUSD", D(2016, 1, 4), D(2016, 6, 30))["share"] == 1.0
+    F.load_panels(["EURUSD"], D(2016, 1, 4), D(2016, 6, 30), "discovery", cfg)
