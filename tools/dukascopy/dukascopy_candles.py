@@ -51,6 +51,24 @@ PRESETS = {"all": MAJORS + CROSSES, "majors": MAJORS, "crosses": CROSSES}
 REC = np.dtype([("t", ">u4"), ("o", ">u4"), ("c", ">u4"), ("l", ">u4"), ("h", ">u4"), ("v", ">f4")])
 STOP = threading.Event()
 _local = threading.local()
+_stats_lock = threading.Lock()
+STATS = {"requests": 0, "seconds": 0.0, "200": 0, "404": 0, "429": 0, "5xx": 0, "other": 0, "exception": 0}
+
+
+def _record(key: str, seconds: float) -> None:
+    with _stats_lock:
+        STATS["requests"] += 1
+        STATS["seconds"] += seconds
+        STATS[key] += 1
+
+
+def stats_line(elapsed: float) -> str:
+    with _stats_lock:
+        s = dict(STATS)
+    rate = s["requests"] / elapsed if elapsed > 0 else 0.0
+    lat = s["seconds"] / s["requests"] if s["requests"] else 0.0
+    return (f"{rate:.2f} req/s, {lat:.2f} s/request | http 200:{s['200']} 404:{s['404']} 429:{s['429']} "
+            f"5xx:{s['5xx']} other:{s['other']} exceptions:{s['exception']}")
 
 
 class FormatError(RuntimeError):
@@ -76,16 +94,24 @@ def fetch(sym: str, day: dt.date, side: str, retries: int) -> tuple[str, np.ndar
     for attempt in range(retries):
         if STOP.is_set():
             return "error", None
+        t0 = time.time()
         try:
             r = session().get(url, timeout=30)
         except requests.RequestException:
+            _record("exception", time.time() - t0)
             if STOP.wait(min(2 ** attempt, 30)):
                 return "error", None
             continue
-        if r.status_code == 404:
+        code = r.status_code
+        _record("200" if code == 200 else "404" if code == 404 else "429" if code == 429
+                else "5xx" if code >= 500 else "other", time.time() - t0)
+        if code == 404:
             return "missing", None
-        if r.status_code != 200:
-            if STOP.wait(min(2 ** attempt, 30)):
+        if code != 200:
+            wait_s = min(2 ** attempt, 30)
+            if code == 429 and r.headers.get("Retry-After", "").isdigit():
+                wait_s = min(int(r.headers["Retry-After"]), 120)
+            if STOP.wait(wait_s):
                 return "error", None
             continue
         if not r.content:
@@ -168,6 +194,9 @@ def run_symbol(sym: str, days: list[dt.date], out: Path, workers: int, retries: 
     new_gaps = not gaps_file.exists()
     counts = {"done": 0, "skipped": 0, "retry": 0, "gap": 0, "cancelled": 0}
     t0, i, live_min = time.time(), 0, 0
+    with _stats_lock:
+        for k in STATS:
+            STATS[k] = 0.0 if k == "seconds" else 0
     interrupted = False
     print(f"{sym}: {len(days)} days -> {root}", flush=True)
     ex = ThreadPoolExecutor(workers)
@@ -190,8 +219,9 @@ def run_symbol(sym: str, days: list[dt.date], out: Path, workers: int, retries: 
                 print(f"  {sym} network errors on {day}, will retry on next run", flush=True)
             if i % 200 == 0 or i == len(days):
                 gf.flush()
+                el = time.time() - t0
                 print(f"  {sym} {i}/{len(days)} | done {counts['done']} skipped {counts['skipped']} "
-                      f"gap {counts['gap']} retry {counts['retry']} | {(time.time() - t0) / 60:.1f} min", flush=True)
+                      f"gap {counts['gap']} retry {counts['retry']} | {el / 60:.1f} min | {stats_line(el)}", flush=True)
 
         try:
             while pending:
@@ -237,7 +267,7 @@ def main() -> int:
     p.add_argument("--start", required=True, type=dt.date.fromisoformat)
     p.add_argument("--end", required=True, type=dt.date.fromisoformat)
     p.add_argument("--out", default=os.environ.get("DUKASCOPY_DIR", r"D:\MarketData\Dukascopy"))
-    p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--workers", type=int, default=8, help="parallel requests (days in flight x 2 sides)")
     p.add_argument("--retries", type=int, default=6)
     a = p.parse_args()
     syms = PRESETS.get(a.symbols.lower()) or tuple(s.strip().upper() for s in a.symbols.split(","))
