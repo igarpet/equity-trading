@@ -127,7 +127,11 @@ def fetch(sym: str, day: dt.date, side: str, retries: int) -> tuple[str, np.ndar
 
 
 def check_format(arr: np.ndarray) -> str | None:
-    """None if the records look like (t, open, close, low, high, volume); else the failed check."""
+    """None if the records look like (t, open, close, low, high, volume); else the failed check.
+
+    Hard checks only (time field, high/low consistent with open/close). They stop the run. The layout,
+    including which field is the close, was validated against USD/JPY ticks (FXS 01, 23 days, 100%
+    match), so the open/close heuristic below is advisory (`swap_suspect`)."""
     t = arr["t"].astype(np.int64)
     if len(t) == 0 or (t % 60).any() or t.max() >= 86_400:
         return "time field is not whole minutes within the day"
@@ -137,17 +141,39 @@ def check_format(arr: np.ndarray) -> str | None:
         ok = ((h >= np.maximum(o, c)) & (l <= np.minimum(o, c)))[live].mean()
         if ok < 0.99:
             return f"high/low inconsistent with open/close on {1 - ok:.1%} of live minutes"
-        both = np.flatnonzero(live[1:] & live[:-1])
-        if len(both) > 30:
-            a = np.abs(o[both + 1] - c[both]).mean()
-            b = np.abs(c[both + 1] - o[both]).mean()
-            if a > b:
-                return "open and close appear swapped"
     return None
+
+
+def swap_suspect(arr: np.ndarray, min_pairs: int = 300) -> bool:
+    """Advisory: True if, over enough consecutive live minutes, the next open sits closer to this minute's
+    open than to its close (medians, so one weekend-open jump cannot decide it). Thin days (Sundays,
+    holidays) have too few minutes and are not judged."""
+    live = arr["v"] > 0
+    both = np.flatnonzero(live[1:] & live[:-1])
+    if len(both) < min_pairs:
+        return False
+    o, c = arr["o"].astype(np.int64), arr["c"].astype(np.int64)
+    a = np.median(np.abs(o[both + 1] - c[both]))
+    b = np.median(np.abs(c[both + 1] - o[both]))
+    return bool(a > b)
 
 
 def day_path(root: Path, sym: str, day: dt.date) -> Path:
     return root / f"{day:%Y}" / f"{sym}_{day:%Y-%m-%d}.parquet"
+
+
+_warn_lock = threading.Lock()
+
+
+def _warn(root: Path, day: dt.date, side: str, msg: str) -> None:
+    f = root / "_format_warnings.csv"
+    with _warn_lock:
+        new = not f.exists()
+        with open(f, "a", newline="") as fh:
+            w = csv.writer(fh)
+            if new:
+                w.writerow(["date", "side", "warning"])
+            w.writerow([day.isoformat(), side, msg])
 
 
 def download_day(sym: str, day: dt.date, root: Path, retries: int):
@@ -163,6 +189,8 @@ def download_day(sym: str, day: dt.date, root: Path, retries: int):
             bad = check_format(arr)
             if bad:
                 raise FormatError(f"{sym} {day} {side}: {bad}")
+            if swap_suspect(arr):
+                _warn(root, day, side, "open/close order looks unusual (advisory)")
             sides[side] = arr
         else:
             problems.append((side, status))

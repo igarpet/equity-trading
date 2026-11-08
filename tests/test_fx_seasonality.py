@@ -41,7 +41,15 @@ def test_candle_format_check():
     good["t"], good["o"], good["c"], good["l"], good["h"], good["v"] = t, o, c, l, h, 1.0
     assert dc.check_format(good) is None
     swapped = good.copy(); swapped["o"], swapped["c"] = c, o
-    assert "swapped" in dc.check_format(swapped)
+    assert dc.check_format(swapped) is None                     # advisory only, never stops the run
+    assert not dc.swap_suspect(swapped)                         # 199 pairs: too few to judge
+    big = np.zeros(2000, dc.REC)
+    pth = 110_000 + np.cumsum(rng.integers(-3, 4, 2000 * 4)).reshape(2000, 4)
+    big["t"] = np.arange(2000) % 1440 * 60
+    big["o"], big["c"], big["l"], big["h"], big["v"] = pth[:, 0], pth[:, 3], pth.min(1) - 1, pth.max(1) + 1, 1.0
+    assert not dc.swap_suspect(big)
+    big_sw = big.copy(); big_sw["o"], big_sw["c"] = big["c"], big["o"]
+    assert dc.swap_suspect(big_sw)
     wrong = good.copy(); wrong["c"], wrong["h"] = h, c          # (t, o, h, l, c) read as (t, o, c, l, h)
     assert dc.check_format(wrong) is not None
     bad_t = good.copy(); bad_t["t"] = t + 7
