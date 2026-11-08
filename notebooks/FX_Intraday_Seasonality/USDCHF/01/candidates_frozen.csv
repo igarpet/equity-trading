@@ -1,0 +1,2 @@
+id,pair,clock,start_time,end_time,minutes,direction,mean_bps,t,q,years_same_sign,cost_bps,pooled_bonferroni,n_days,start,end
+USDCHF-01,USDCHF,NY,NY 04:00,NY 08:00,240,1,1.982471,3.374814,0.019022,5,1.701278,False,1296,660,900
