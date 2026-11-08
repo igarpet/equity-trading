@@ -1,0 +1,74 @@
+{
+  "study": "FXS02",
+  "pair": "USDJPY",
+  "fxs_version": "0.2.0",
+  "synthetic": false,
+  "window": [
+    "2021-01-01",
+    "2025-12-31"
+  ],
+  "candidates_sha256": "ab1a6b35efcc21d62994e48452b1d9b95d39b866b0e5f46377bce5dcfb9d4f05",
+  "discovery_D0": "STRUCTURE_FOUND",
+  "n_candidates": 2,
+  "confirmed": [],
+  "results": [
+    {
+      "id": "USDJPY-01",
+      "clock": "UTC",
+      "start_time": "UTC 00:55",
+      "end_time": "UTC 01:55",
+      "direction": -1,
+      "pooled_bonferroni": true,
+      "disc_mean_bps": -1.867758,
+      "n_days": 1298,
+      "gross_bps": 0.932900380307471,
+      "t": 2.463964500730297,
+      "p_one_sided": 0.006870486001549114,
+      "net_bps": 0.232900380307471,
+      "net2_bps": -0.46709961969252906,
+      "gross_pips": 1.3297327126805358,
+      "win_rate": 0.512326656394453,
+      "boot_net_lower": [
+        -0.5013198307713699,
+        -0.5312450269493704
+      ],
+      "years_net_positive": 3,
+      "years": 5,
+      "K1": true,
+      "q": 0.006870486001549114,
+      "K2": false,
+      "K3": false,
+      "K4": true,
+      "verdict": "NOT_CONFIRMED"
+    },
+    {
+      "id": "USDJPY-02",
+      "clock": "UTC",
+      "start_time": "UTC 00:25",
+      "end_time": "UTC 00:55",
+      "direction": 1,
+      "pooled_bonferroni": false,
+      "disc_mean_bps": 1.066645,
+      "n_days": 1298,
+      "gross_bps": 0.8675005504987269,
+      "t": 3.013364723646975,
+      "p_one_sided": 0.001291840999419164,
+      "net_bps": 0.16750055049872725,
+      "net2_bps": -0.532499449501273,
+      "gross_pips": 1.1475383727115487,
+      "win_rate": 0.5092449922958397,
+      "boot_net_lower": [
+        -0.4595743405321797,
+        -0.5036274436111337
+      ],
+      "years_net_positive": 3,
+      "years": 5,
+      "K1": true,
+      "q": 0.002583681998838328,
+      "K2": false,
+      "K3": false,
+      "K4": true,
+      "verdict": "NOT_CONFIRMED"
+    }
+  ]
+}
