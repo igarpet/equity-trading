@@ -1,0 +1,15 @@
+{
+  "study": "FXS02",
+  "pair": "GBPUSD",
+  "fxs_version": "0.2.0",
+  "synthetic": false,
+  "window": [
+    "2021-01-01",
+    "2025-12-31"
+  ],
+  "candidates_sha256": "fce53799248dc2ac04cec6aa077066c6e03310c83a2e7c2f654c84be980d15c7",
+  "discovery_D0": "NO_STRUCTURE",
+  "n_candidates": 0,
+  "confirmed": [],
+  "results": []
+}

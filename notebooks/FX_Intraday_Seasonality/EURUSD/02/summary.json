@@ -1,0 +1,74 @@
+{
+  "study": "FXS02",
+  "pair": "EURUSD",
+  "fxs_version": "0.2.0",
+  "synthetic": false,
+  "window": [
+    "2021-01-01",
+    "2025-12-31"
+  ],
+  "candidates_sha256": "20d9d4f4dc0e5a5a7f714e06f19658c9c2bbfe6f473deca64969ed50276c1f8c",
+  "discovery_D0": "STRUCTURE_FOUND",
+  "n_candidates": 2,
+  "confirmed": [],
+  "results": [
+    {
+      "id": "EURUSD-01",
+      "clock": "UTC",
+      "start_time": "UTC 01:15",
+      "end_time": "UTC 03:15",
+      "direction": 1,
+      "pooled_bonferroni": false,
+      "disc_mean_bps": 1.300797,
+      "n_days": 1298,
+      "gross_bps": 0.1470542085388117,
+      "t": 0.6179217940516434,
+      "p_one_sided": 0.2683134459657864,
+      "net_bps": -0.5529457914611882,
+      "net2_bps": -1.2529457914611883,
+      "gross_pips": 0.16101016158357875,
+      "win_rate": 0.4645608628659476,
+      "boot_net_lower": [
+        -1.014433834744122,
+        -0.9952966353299173
+      ],
+      "years_net_positive": 0,
+      "years": 5,
+      "K1": false,
+      "q": 0.2683134459657864,
+      "K2": false,
+      "K3": false,
+      "K4": false,
+      "verdict": "NOT_CONFIRMED"
+    },
+    {
+      "id": "EURUSD-02",
+      "clock": "NY",
+      "start_time": "NY 04:00",
+      "end_time": "NY 08:00",
+      "direction": -1,
+      "pooled_bonferroni": false,
+      "disc_mean_bps": -2.485683,
+      "n_days": 1298,
+      "gross_bps": 1.6597035251263998,
+      "t": 3.2088317495373206,
+      "p_one_sided": 0.0006663772862416917,
+      "net_bps": 0.9597035251264002,
+      "net2_bps": 0.25970352512640027,
+      "gross_pips": 1.8247184194162411,
+      "win_rate": 0.5169491525423728,
+      "boot_net_lower": [
+        -0.016269221423190355,
+        -0.038132100807812486
+      ],
+      "years_net_positive": 3,
+      "years": 5,
+      "K1": true,
+      "q": 0.0013327545724833834,
+      "K2": false,
+      "K3": true,
+      "K4": true,
+      "verdict": "NOT_CONFIRMED"
+    }
+  ]
+}
