@@ -187,7 +187,7 @@ def download_day(sym: str, day: dt.date, root: Path, retries: int):
     return day, "done", int((df["bid_v"] > 0).sum()), problems
 
 
-def run_symbol(sym: str, days: list[dt.date], out: Path, workers: int, retries: int) -> bool:
+def run_symbol(sym: str, days: list[dt.date], out: Path, workers: int, retries: int) -> tuple[bool, int]:
     root = out / sym / "candles_m1"
     root.mkdir(parents=True, exist_ok=True)
     gaps_file = root / "_gaps.csv"
@@ -258,7 +258,7 @@ def run_symbol(sym: str, days: list[dt.date], out: Path, workers: int, retries: 
             gf.flush()
     size = sum(f.stat().st_size for f in root.rglob("*.parquet")) / 1e6
     print(f"{sym}: {'stopped' if interrupted else 'finished'} | {counts} | folder {size:.0f} MB", flush=True)
-    return not interrupted
+    return not interrupted, counts["retry"]
 
 
 def main() -> int:
@@ -269,6 +269,8 @@ def main() -> int:
     p.add_argument("--out", default=os.environ.get("DUKASCOPY_DIR", r"D:\MarketData\Dukascopy"))
     p.add_argument("--workers", type=int, default=8, help="parallel requests (days in flight x 2 sides)")
     p.add_argument("--retries", type=int, default=6)
+    p.add_argument("--passes", type=int, default=3, help="extra passes over days that hit network errors")
+    p.add_argument("--pause", type=int, default=60, help="seconds to wait before an extra pass")
     a = p.parse_args()
     syms = PRESETS.get(a.symbols.lower()) or tuple(s.strip().upper() for s in a.symbols.split(","))
     if a.end < a.start:
@@ -276,10 +278,25 @@ def main() -> int:
     days = [a.start + dt.timedelta(n) for n in range((a.end - a.start).days + 1)]
     days = [d for d in days if d.weekday() != 5]
     print(f"symbols: {', '.join(syms)} | {a.start} -> {a.end} | Ctrl+C stops cleanly; rerun resumes.")
+    left = {}
     for sym in syms:
-        if not run_symbol(sym, days, Path(a.out), a.workers, a.retries):
-            print("Run stopped. Rerun the same command to continue.")
-            return 1
+        for k in range(a.passes + 1):
+            if k:
+                print(f"{sym}: pass {k + 1} for {retry} day(s) with network errors in {a.pause} s", flush=True)
+                if STOP.wait(a.pause):
+                    return 1
+            ok, retry = run_symbol(sym, days, Path(a.out), a.workers, a.retries)   # finished days are skipped
+            if not ok:
+                print("Run stopped. Rerun the same command to continue.")
+                return 1
+            if retry == 0:
+                break
+        if retry:
+            left[sym] = retry
+    if left:
+        print(f"Days still missing after {a.passes} extra passes: {left}. Rerun the same command later.")
+    else:
+        print("All symbols complete.")
     return 0
 
 

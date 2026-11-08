@@ -34,3 +34,4 @@ python tools/dukascopy/dukascopy_candles.py --symbols all --start 2015-12-30 --e
 - Output: `D:\MarketData\Dukascopy\<SYMBOL>\candles_m1\<YYYY>\<SYMBOL>_<YYYY-MM-DD>.parquet`; columns `ts` (minute start, UTC), `bid_o/h/l/c/v`, `ask_o/h/l/c/v`.
 - The record layout `(seconds, open, close, low, high, volume)` is checked on every file (whole-minute times, high/low consistent with open/close, open and close not swapped). A failed check stops the run with a message: report it.
 - `--symbols all | majors | crosses | EURUSD,GBPUSD,...`. Resumable; Ctrl+C stops cleanly. Missing sides are logged in `_gaps.csv`.
+- Keep `--workers 8` and one process: in a test (2026-11-08) 16 parallel requests drew 151 HTTP 5xx replies out of 205 and fetched fewer days than 8. Days that hit errors are retried automatically (`--passes 3`, `--pause 60`).
