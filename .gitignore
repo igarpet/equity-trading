@@ -6,3 +6,4 @@ __pycache__/
 .env
 notebooks/*/*_synthetic/
 .ipynb_checkpoints/
+notebooks/*/*/*_synthetic/

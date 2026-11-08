@@ -379,6 +379,14 @@ def file_sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def frozen_hash_ok(path: Path, expected: str) -> bool:
+    """True if the file's SHA-256 matches `expected` with LF or CRLF line endings. Git on Windows stores
+    text with LF and checks it out with CRLF, so the same content can carry either hash."""
+    b = Path(path).read_bytes()
+    lf = b.replace(b"\r\n", b"\n")
+    return expected in {hashlib.sha256(x).hexdigest() for x in (b, lf, lf.replace(b"\n", b"\r\n"))}
+
+
 # ----------------------------------------------------------------------------- confirmation
 def candidate_trades(panel: Panel, start: int, end: int, direction: int, cfg: FXSConfig) -> pd.DataFrame:
     """Daily trade on quoted prices: long buys the ask at `start` and sells the bid at `end`; short sells the

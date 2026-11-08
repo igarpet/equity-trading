@@ -144,3 +144,13 @@ def test_incomplete_download_refused(market_dir):
     assert cov["present"] < cov["expected"] and D(2018, 1, 2) in cov["missing"]
     assert F.file_coverage("EURUSD", D(2016, 1, 4), D(2016, 6, 30))["share"] == 1.0
     F.load_panels(["EURUSD"], D(2016, 1, 4), D(2016, 6, 30), "discovery", cfg)
+
+
+def test_frozen_hash_tolerates_line_endings(tmp_path):
+    f = tmp_path / "c.csv"
+    f.write_bytes(b"id,pair\r\nEURUSD-01,EURUSD\r\n")
+    h = F.file_sha256(f)
+    f.write_bytes(b"id,pair\nEURUSD-01,EURUSD\n")
+    assert F.frozen_hash_ok(f, h)
+    f.write_bytes(b"id,pair\nEURUSD-01,GBPUSD\n")
+    assert not F.frozen_hash_ok(f, h)
