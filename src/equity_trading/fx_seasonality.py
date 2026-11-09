@@ -528,3 +528,99 @@ def bonferroni_t(n_tests: int, alpha: float = 0.05) -> float:
 
 def pooled_n_tests(cfg: FXSConfig) -> int:
     return len(intervals(cfg)) * len(CLOCKS) * len(PAIRS)
+
+
+# ----------------------------------------------------------------------------- account growth (FXS 03, sizing only, no gates)
+def load_frozen_candidates(base: Path) -> pd.DataFrame:
+    """All pairs' frozen candidate files under the branch folder, each verified against its summary."""
+    import json
+    rows = []
+    for p in PAIRS:
+        f, s = Path(base) / p / "01" / "candidates_frozen.csv", Path(base) / p / "01" / "summary.json"
+        if not f.exists():
+            continue
+        sha = json.loads(s.read_text())["candidates_sha256"]
+        if not frozen_hash_ok(f, sha):
+            raise RuntimeError(f"{f} changed after discovery")
+        c = pd.read_csv(f)
+        if len(c):
+            rows.append(c)
+    return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
+
+
+def structure_returns(cand: pd.DataFrame, start: dt.date, end: dt.date, stage: str, cfg: FXSConfig,
+                      panels: dict | None = None) -> pd.DataFrame:
+    """Daily net return (bps, after spread and commission) of every structure: rows = dates, columns = ids.
+    A day on which a structure has no valid quotes is 0 (no trade)."""
+    pairs = sorted(set(cand["pair"]))
+    panels = panels or load_panels(pairs, start, end, stage, cfg)
+    cols = {}
+    for _, r in cand.iterrows():
+        tr = candidate_trades(panels[(r["pair"], r["clock"])], int(r["start"]), int(r["end"]), int(r["direction"]), cfg)
+        cols[r["id"]] = pd.Series(tr["net_bps"].to_numpy(), index=pd.to_datetime(tr["date"]))
+    return pd.DataFrame(cols).sort_index().fillna(0.0)
+
+
+def max_concurrent(cand: pd.DataFrame) -> int:
+    """Largest number of structures open at the same UTC minute (New York intervals under both DST offsets)."""
+    best = 0
+    for o in range(len(NY_UTC_OFFSETS)):
+        occ = np.zeros(SLOTS, int)
+        for _, r in cand.iterrows():
+            off = 0 if r["clock"] == "UTC" else NY_UTC_OFFSETS[o]
+            m = (np.arange(int(r["start"]), int(r["end"])) + off) % SLOTS
+            occ[m] += 1
+        best = max(best, int(occ.max()))
+    return best
+
+
+def kelly_weights(R_bps: pd.DataFrame, fraction: float = 0.5, cap_total: float | None = None) -> pd.Series:
+    """Fractional Kelly notional per structure (multiple of equity) from daily net returns, long-only:
+    w = fraction * inv(Cov) * mean, structures with a negative weight dropped and the rest re-solved.
+    Optionally scaled down so the sum of weights is at most cap_total."""
+    R = R_bps / 1e4
+    keep = list(R.columns[R.mean() > 0])
+    while keep:
+        mu, S = R[keep].mean().to_numpy(), np.cov(R[keep].to_numpy(), rowvar=False).reshape(len(keep), len(keep))
+        w = fraction * np.linalg.solve(S + 1e-12 * np.eye(len(keep)), mu)
+        if (w >= 0).all():
+            break
+        keep = [k for k, x in zip(keep, w) if x > 0]
+    out = pd.Series(0.0, index=R.columns)
+    if keep:
+        out[keep] = w
+    if cap_total is not None and out.sum() > cap_total:
+        out *= cap_total / out.sum()
+    return out
+
+
+def simulate_account(R_bps: pd.DataFrame, weights: pd.Series, equity0: float, min_units: int = 1_000) -> pd.DataFrame:
+    """Compounded account: each day, structure i trades floor(equity * w_i / min_units) * min_units units of
+    notional and earns that times its net return. Equity is re-marked daily, so size grows with equity.
+    An account at or below zero stops."""
+    w = weights.reindex(R_bps.columns).fillna(0.0).to_numpy()
+    R = R_bps.to_numpy() / 1e4
+    eq = np.empty(len(R))
+    e = float(equity0)
+    for k in range(len(R)):
+        if e > 0:
+            units = np.floor(e * w / min_units) * min_units
+            e = max(e + float(units @ R[k]), 0.0)
+        eq[k] = e
+    out = pd.DataFrame({"equity": eq}, index=R_bps.index)
+    out["ret"] = out["equity"].pct_change().fillna(out["equity"].iloc[0] / equity0 - 1)
+    out["drawdown"] = out["equity"] / out["equity"].cummax().clip(lower=equity0) - 1
+    return out
+
+
+def account_stats(acc: pd.DataFrame, equity0: float) -> dict:
+    yrs = max((acc.index[-1] - acc.index[0]).days / 365.25, 1e-9)
+    end = float(acc["equity"].iloc[-1])
+    r = acc["ret"]
+    yearly = acc["equity"].resample("YE").last()
+    yr_ret = yearly.pct_change()
+    yr_ret.iloc[0] = yearly.iloc[0] / equity0 - 1
+    return {"final_equity": end, "cagr": (end / equity0) ** (1 / yrs) - 1 if end > 0 else -1.0,
+            "ann_vol": float(r.std() * np.sqrt(252)), "sharpe": float(r.mean() / r.std() * np.sqrt(252)) if r.std() > 0 else np.nan,
+            "max_drawdown": float(acc["drawdown"].min()), "worst_year": float(yr_ret.min()), "best_year": float(yr_ret.max()),
+            "ruined": bool(end <= 0)}

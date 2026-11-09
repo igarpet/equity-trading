@@ -162,3 +162,22 @@ def test_frozen_hash_tolerates_line_endings(tmp_path):
     assert F.frozen_hash_ok(f, h)
     f.write_bytes(b"id,pair\nEURUSD-01,GBPUSD\n")
     assert not F.frozen_hash_ok(f, h)
+
+
+def test_account_growth_compounds_and_kelly_drops_losers():
+    idx = pd.bdate_range("2021-01-01", periods=500)
+    rng = np.random.default_rng(0)
+    R = pd.DataFrame({"good": rng.normal(2.0, 10, 500), "bad": rng.normal(-2.0, 10, 500)}, index=idx)
+    w = F.kelly_weights(R, 0.5)
+    assert w["bad"] == 0 and w["good"] > 0
+    capped = F.kelly_weights(R, 0.5, cap_total=10)
+    assert capped.sum() <= 10 + 1e-9
+    flat = pd.DataFrame({"a": np.full(10, 100.0)}, index=idx[:10])            # +1% a day at 1x
+    acc = F.simulate_account(flat, pd.Series({"a": 1.0}), 100_000, min_units=1)
+    assert acc["equity"].iloc[-1] == pytest.approx(100_000 * 1.01 ** 10)       # size grows with equity
+    small = F.simulate_account(flat, pd.Series({"a": 1.0}), 500)               # below one 1,000-unit lot
+    assert (small["equity"] == 500).all()
+    st = F.account_stats(acc, 100_000)
+    assert st["max_drawdown"] == 0 and not st["ruined"]
+    cand = pd.DataFrame({"clock": ["UTC", "UTC", "NY"], "start": [0, 30, 0], "end": [60, 90, 60]})
+    assert F.max_concurrent(cand) == 2
