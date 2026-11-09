@@ -204,3 +204,11 @@ def test_pips_and_pip_value():
     assert F.usd_per_pip_per_lot("EURUSD", 1.10) == pytest.approx(10.0)
     assert F.usd_per_pip_per_lot("USDJPY", 150.0) == pytest.approx(1000 / 150)
     assert F.usd_per_pip_per_lot("EURJPY", 160.0) == pytest.approx(1000 / 160 * 1.10)
+
+
+def test_holdout_stage_only_in_2026():
+    F._guard(D(2026, 1, 1), D(2026, 11, 6), "holdout")
+    with pytest.raises(F.WindowError):
+        F._guard(D(2025, 12, 1), D(2026, 11, 6), "holdout")
+    with pytest.raises(F.HoldoutError):
+        F._guard(D(2025, 1, 1), D(2026, 1, 5), "confirmation")

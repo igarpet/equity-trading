@@ -30,7 +30,7 @@ import pandas as pd
 
 from .data import vendor_dir, work_dir
 
-FXS_VERSION = "0.2.0"   # 0.2.0: per-pair families (FXS 002), completeness check
+FXS_VERSION = "0.2.0"   # 0.2.0: per-pair families (FXS 002), completeness check; holdout stage (FXS 005)
 NY = "America/New_York"
 MAJORS = ("EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD")
 CROSSES = ("EURGBP", "EURCHF", "EURJPY", "GBPJPY", "AUDJPY", "CADJPY", "CADCHF", "AUDNZD")
@@ -131,6 +131,11 @@ def file_coverage(pair: str, start: dt.date, end: dt.date) -> dict:
 
 
 def _guard(start: dt.date, end: dt.date, stage: str) -> None:
+    if stage == "holdout":
+        # one pre-registered look (FXS 005): the window must lie entirely in 2026
+        if start < HOLDOUT_START:
+            raise WindowError(f"holdout window must start on or after {HOLDOUT_START}; got {start}.")
+        return
     if end >= HOLDOUT_START:
         raise HoldoutError(f"{end} reaches the sealed holdout (>= {HOLDOUT_START}).")
     if stage == "discovery" and end >= CONFIRMATION[0]:
