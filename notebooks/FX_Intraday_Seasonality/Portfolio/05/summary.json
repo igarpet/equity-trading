@@ -1,0 +1,140 @@
+{
+  "study": "FXS06",
+  "synthetic": false,
+  "window": [
+    "2026-01-01",
+    "2026-11-06"
+  ],
+  "structures": [
+    "EURUSD-02",
+    "USDJPY-01",
+    "USDJPY-02",
+    "EURJPY-02"
+  ],
+  "per_structure": [
+    {
+      "id": "EURUSD-02",
+      "promised_pips": 1.53,
+      "pips_after_spread": 1.0145306035464827,
+      "commission_pips": 0.31531873140495864,
+      "net_pips": 0.6992118721415238,
+      "usd_per_lot_trade": 6.992118721415243,
+      "win_rate": 0.5363636363636364,
+      "typical_swing_pips": 16.50869695994151,
+      "worst_open_loss_pips": -86.77370619616943,
+      "n": 220,
+      "t": 0.5884870369577022,
+      "p_mean_gt_0": 0.27810271616937193,
+      "p_below_promised": 0.2422049897249965,
+      "H1": true,
+      "H2": false,
+      "H3": false,
+      "verdict": "HOLDS"
+    },
+    {
+      "id": "USDJPY-01",
+      "promised_pips": 0.92,
+      "pips_after_spread": -0.24900399006600768,
+      "commission_pips": 0.4753458749999999,
+      "net_pips": -0.7243498650660076,
+      "usd_per_lot_trade": -4.764372965017823,
+      "win_rate": 0.45,
+      "typical_swing_pips": 16.17489136105124,
+      "worst_open_loss_pips": -70.84181872648722,
+      "n": 220,
+      "t": -0.7448126616089688,
+      "p_mean_gt_0": 0.7718075102604944,
+      "p_below_promised": 0.045437259917587285,
+      "H1": false,
+      "H2": true,
+      "H3": false,
+      "verdict": "FAILS"
+    },
+    {
+      "id": "USDJPY-02",
+      "promised_pips": 0.74,
+      "pips_after_spread": 0.21149538490795222,
+      "commission_pips": 0.47537125791855206,
+      "net_pips": -0.2638758730106,
+      "usd_per_lot_trade": -1.6651563182836135,
+      "win_rate": 0.5384615384615384,
+      "typical_swing_pips": 18.03081957930811,
+      "worst_open_loss_pips": -251.59168980248566,
+      "n": 221,
+      "t": -0.25955681881781506,
+      "p_mean_gt_0": 0.6023971757477234,
+      "p_below_promised": 0.16171234393884582,
+      "H1": false,
+      "H2": false,
+      "H3": false,
+      "verdict": "INCONCLUSIVE"
+    },
+    {
+      "id": "EURJPY-02",
+      "promised_pips": 0.83,
+      "pips_after_spread": 3.208218076482623,
+      "commission_pips": 0.49951136569313037,
+      "net_pips": 2.7087067107894924,
+      "usd_per_lot_trade": 16.25890670568518,
+      "win_rate": 0.5565610859728507,
+      "typical_swing_pips": 20.032450652194225,
+      "worst_open_loss_pips": -114.55432280970672,
+      "n": 221,
+      "t": 2.2462385903357385,
+      "p_mean_gt_0": 0.012344364824490786,
+      "p_below_promised": 0.9403771821723225,
+      "H1": true,
+      "H2": false,
+      "H3": true,
+      "verdict": "HOLDS"
+    }
+  ],
+  "portfolio": {
+    "n": 221,
+    "mean": 16.811415846258722,
+    "se": 16.081241839508817,
+    "t": 1.0454053246656607,
+    "p_mean_gt_0": 0.14791783840189843,
+    "p_below_promised": 0.15275039098204474,
+    "H1": true,
+    "H2": false,
+    "H3": false,
+    "verdict": "HOLDS",
+    "promised_usd_per_day": 33.29,
+    "total_usd": 3715.322902023178,
+    "win_rate_days": 0.5565610859728507,
+    "worst_day_usd": -1581.325088074217,
+    "best_day_usd": 668.5623421181883
+  },
+  "prop_6k": [
+    {
+      "set": "portfolio (all four)",
+      "L_each": 2,
+      "outcome": "open",
+      "day": null,
+      "end_equity": 6385.0
+    },
+    {
+      "set": "portfolio (all four)",
+      "L_each": 5,
+      "outcome": "daily_breach",
+      "day": 150,
+      "end_equity": 6497.0
+    },
+    {
+      "set": "HOLDS only",
+      "L_each": 2,
+      "outcome": "open",
+      "day": null,
+      "end_equity": 6555.0
+    },
+    {
+      "set": "HOLDS only",
+      "L_each": 5,
+      "outcome": "daily_breach",
+      "day": 150,
+      "end_equity": 6659.0
+    }
+  ],
+  "note": "USDJPY 2026 Tokyo mornings partly seen in GTF 02 (disclosed in discussion 004)."
+}
