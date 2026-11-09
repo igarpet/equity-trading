@@ -637,13 +637,30 @@ def commission_bps_per_lot(pair: str, usd_per_lot_round_trip: float, lot_units: 
     return usd_per_lot_round_trip / (lot_units * BASE_USD[pair[:3]]) * 1e4
 
 
+def bps_to_pips(bps, price, pair: str):
+    """Convert a return in bps of price to pips at that price."""
+    return np.asarray(bps, float) * 1e-4 * np.asarray(price, float) / pip_size(pair)
+
+
+def usd_per_pip_per_lot(pair: str, price, lot_units: int = 100_000):
+    """USD value of one pip on one 100,000-unit lot: quote-currency pip value converted to USD
+    (USD-quoted pairs: 10; USD-based pairs: 10 / price x pip scale; crosses via BASE_USD / price)."""
+    price = np.asarray(price, float)
+    quote_value = lot_units * pip_size(pair)                    # in quote currency
+    if pair.endswith("USD"):
+        return np.full_like(price, quote_value)
+    if pair.startswith("USD"):
+        return quote_value / price
+    return quote_value / price * BASE_USD[pair[:3]]          # quote -> base at price, base -> USD
+
+
 def structure_detail(cand: pd.DataFrame, start: dt.date, end: dt.date, stage: str, cfg: FXSConfig,
-                     panels: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+                     panels: dict | None = None, with_price: bool = False):
     """Per structure and day: gross return after spread (bps) and maximum adverse excursion while open (bps,
     <= 0, marked at minute closes on the quote you would exit at). Rows = dates, columns = ids; no trade = 0."""
     pairs = sorted(set(cand["pair"]))
     panels = panels or load_panels(pairs, start, end, stage, cfg)
-    G, M = {}, {}
+    G, M, P = {}, {}, {}
     for _, r in cand.iterrows():
         p = panels[(r["pair"], r["clock"])]
         s, e, d = int(r["start"]), int(r["end"]), int(r["direction"])
@@ -654,7 +671,9 @@ def structure_detail(cand: pd.DataFrame, start: dt.date, end: dt.date, stage: st
         idx = pd.to_datetime(p.dates)
         G[r["id"]] = pd.Series(path[:, -1], index=idx)
         M[r["id"]] = pd.Series(np.minimum(path.min(axis=1), 0.0), index=idx)
-    return pd.DataFrame(G).sort_index().fillna(0.0), pd.DataFrame(M).sort_index().fillna(0.0)
+        P[r["id"]] = pd.Series(0.5 * (p.bid[:, s] + p.ask[:, s]), index=idx)
+    out = (pd.DataFrame(G).sort_index().fillna(0.0), pd.DataFrame(M).sort_index().fillna(0.0))
+    return (*out, pd.DataFrame(P).sort_index().ffill().bfill()) if with_price else out
 
 
 @dataclass(frozen=True)

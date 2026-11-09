@@ -196,3 +196,11 @@ def test_prop_costs_and_rules():
     G3 = np.full((100, 1), -4.0)
     o, d, _ = F.run_prop_path(G3, np.full((100, 1), -4.0), c, np.array([10.0]), 10_000, r, 100)
     assert o == "max_breach"
+
+
+def test_pips_and_pip_value():
+    assert F.bps_to_pips(1.0, 1.10, "EURUSD") == pytest.approx(1.10)
+    assert F.bps_to_pips(1.0, 150.0, "USDJPY") == pytest.approx(1.50)
+    assert F.usd_per_pip_per_lot("EURUSD", 1.10) == pytest.approx(10.0)
+    assert F.usd_per_pip_per_lot("USDJPY", 150.0) == pytest.approx(1000 / 150)
+    assert F.usd_per_pip_per_lot("EURJPY", 160.0) == pytest.approx(1000 / 160 * 1.10)
