@@ -1,0 +1,45 @@
+{
+  "study": "FXS02",
+  "pair": "CADJPY",
+  "fxs_version": "0.2.0",
+  "synthetic": false,
+  "window": [
+    "2021-01-01",
+    "2025-12-31"
+  ],
+  "candidates_sha256": "bb4773ca30ad43ba297416ab11fe490b8f676cb956d46a1da18c2d1d561d4adf",
+  "discovery_D0": "STRUCTURE_FOUND",
+  "n_candidates": 1,
+  "confirmed": [],
+  "results": [
+    {
+      "id": "CADJPY-01",
+      "clock": "NY",
+      "start_time": "NY 13:40",
+      "end_time": "NY 15:40",
+      "direction": 1,
+      "pooled_bonferroni": false,
+      "disc_mean_bps": 1.879026,
+      "n_days": 1298,
+      "gross_bps": -1.2144941250950219,
+      "t": -2.9236630264416856,
+      "p_one_sided": 0.9982703048965513,
+      "net_bps": -1.914494125095022,
+      "net2_bps": -2.6144941250950215,
+      "gross_pips": -1.2377931456948639,
+      "win_rate": 0.4522342064714946,
+      "boot_net_lower": [
+        -2.701408733067258,
+        -2.684762253285773
+      ],
+      "years_net_positive": 0,
+      "years": 5,
+      "K1": false,
+      "q": 0.9982703048965513,
+      "K2": false,
+      "K3": false,
+      "K4": false,
+      "verdict": "NOT_CONFIRMED"
+    }
+  ]
+}

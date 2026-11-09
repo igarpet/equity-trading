@@ -1,0 +1,2 @@
+id,clock,start_time,end_time,direction,pooled_bonferroni,disc_mean_bps,n_days,gross_bps,t,p_one_sided,net_bps,net2_bps,gross_pips,win_rate,boot_net_lower,years_net_positive,years,K1,q,K2,K3,K4,verdict
+CADJPY-01,NY,NY 13:40,NY 15:40,1,False,1.879026,1298,-1.2144941250950219,-2.9236630264416856,0.9982703048965513,-1.914494125095022,-2.6144941250950215,-1.2377931456948639,0.4522342064714946,"[-2.701408733067258, -2.684762253285773]",0,5,False,0.9982703048965513,False,False,False,NOT_CONFIRMED

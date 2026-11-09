@@ -1,0 +1,2 @@
+pair,clock,start,end,minutes,n_days,mean_bps,se_bps,t,p,years_same_sign,cost_bps,D1,q,D2,D3,D123,pooled_bonferroni
+GBPJPY,NY,1235,1355,120,1297,1.7396555712811588,0.386274917944532,4.503672101047391,6.678923249729867e-06,5,1.786274308045879,True,0.01805980846726956,True,False,False,False

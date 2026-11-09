@@ -1,0 +1,3 @@
+id,pair,clock,start_time,end_time,minutes,direction,mean_bps,t,q,years_same_sign,cost_bps,pooled_bonferroni,n_days,start,end
+EURJPY-01,EURJPY,NY,NY 10:45,NY 11:00,15,-1,-1.194497,-4.146766,0.027396,4,1.097464,False,1297,1065,1080
+EURJPY-02,EURJPY,NY,NY 12:35,NY 16:35,240,1,1.836600,4.128380,0.027396,5,1.256475,False,1297,1175,1415

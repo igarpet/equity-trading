@@ -1,0 +1,2 @@
+id,clock,start_time,end_time,direction,pooled_bonferroni,disc_mean_bps,n_days,gross_bps,t,p_one_sided,net_bps,net2_bps,gross_pips,win_rate,boot_net_lower,years_net_positive,years,K1,q,K2,K3,K4,verdict
+USDCHF-01,NY,NY 04:00,NY 08:00,1,False,1.982471,1298,0.17063129147088307,0.29600971033043466,0.3836113328846286,-0.5293687085291168,-1.2293687085291163,0.13933683183191678,0.5030816640986132,"[-1.6549761049611926, -1.6088670412521167]",0,5,False,0.3836113328846286,False,False,False,NOT_CONFIRMED

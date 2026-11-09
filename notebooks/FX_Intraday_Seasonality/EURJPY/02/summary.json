@@ -1,0 +1,74 @@
+{
+  "study": "FXS02",
+  "pair": "EURJPY",
+  "fxs_version": "0.2.0",
+  "synthetic": false,
+  "window": [
+    "2021-01-01",
+    "2025-12-31"
+  ],
+  "candidates_sha256": "3ead39780c9d22045c1fb4830ee5a9c94a6a65df4c3691f5535d12b50b715fc4",
+  "discovery_D0": "STRUCTURE_FOUND",
+  "n_candidates": 2,
+  "confirmed": [],
+  "results": [
+    {
+      "id": "EURJPY-01",
+      "clock": "NY",
+      "start_time": "NY 10:45",
+      "end_time": "NY 11:00",
+      "direction": -1,
+      "pooled_bonferroni": false,
+      "disc_mean_bps": -1.194497,
+      "n_days": 1298,
+      "gross_bps": -0.8589979427910033,
+      "t": -3.5274135161620954,
+      "p_one_sided": 0.9997901795874861,
+      "net_bps": -1.5589979427910032,
+      "net2_bps": -2.258997942791003,
+      "gross_pips": -1.3121104148685974,
+      "win_rate": 0.41833590138674887,
+      "boot_net_lower": [
+        -2.0900288559376805,
+        -2.1344277058817083
+      ],
+      "years_net_positive": 0,
+      "years": 5,
+      "K1": false,
+      "q": 0.9997901795874861,
+      "K2": false,
+      "K3": false,
+      "K4": false,
+      "verdict": "NOT_CONFIRMED"
+    },
+    {
+      "id": "EURJPY-02",
+      "clock": "NY",
+      "start_time": "NY 12:35",
+      "end_time": "NY 16:35",
+      "direction": 1,
+      "pooled_bonferroni": false,
+      "disc_mean_bps": 1.8366,
+      "n_days": 1298,
+      "gross_bps": 0.8078462343136452,
+      "t": 1.7369480051385209,
+      "p_one_sided": 0.04119817445737141,
+      "net_bps": 0.10784623431364518,
+      "net2_bps": -0.5921537656863548,
+      "gross_pips": 1.2343591119313526,
+      "win_rate": 0.5315870570107858,
+      "boot_net_lower": [
+        -0.8102079193889171,
+        -0.7391457503941999
+      ],
+      "years_net_positive": 3,
+      "years": 5,
+      "K1": false,
+      "q": 0.08239634891474282,
+      "K2": false,
+      "K3": false,
+      "K4": true,
+      "verdict": "NOT_CONFIRMED"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+id,clock,start_time,end_time,direction,pooled_bonferroni,disc_mean_bps,n_days,gross_bps,t,p_one_sided,net_bps,net2_bps,gross_pips,win_rate,boot_net_lower,years_net_positive,years,K1,q,K2,K3,K4,verdict
+AUDUSD-01,NY,NY 21:50,NY 01:50,1,False,2.046101,1297,-1.1003042824085112,-1.8103334987555852,0.9648779574029352,-1.8003042824085111,-2.50030428240851,-0.747325932255643,0.4680030840400925,"[-3.0263669425747377, -2.9732949833109616]",0,5,False,0.9648779574029352,False,False,False,NOT_CONFIRMED

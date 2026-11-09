@@ -1,0 +1,2 @@
+id,clock,start_time,end_time,direction,pooled_bonferroni,disc_mean_bps,n_days,gross_bps,t,p_one_sided,net_bps,net2_bps,gross_pips,win_rate,boot_net_lower,years_net_positive,years,K1,q,K2,K3,K4,verdict
+AUDJPY-01,NY,NY 13:40,NY 15:40,1,False,1.66805,1298,-0.48271743579133775,-1.0396149931315206,0.8507405958210902,-1.1827174357913377,-1.8827174357913374,-0.44519713539666705,0.46533127889060094,"[-2.0606132122880076, -2.016313577477744]",0,5,False,0.8507405958210902,False,False,False,NOT_CONFIRMED

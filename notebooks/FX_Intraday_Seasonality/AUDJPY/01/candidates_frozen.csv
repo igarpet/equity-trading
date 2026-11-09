@@ -1,0 +1,2 @@
+id,pair,clock,start_time,end_time,minutes,direction,mean_bps,t,q,years_same_sign,cost_bps,pooled_bonferroni,n_days,start,end
+AUDJPY-01,AUDJPY,NY,NY 13:40,NY 15:40,120,1,1.668050,3.860328,0.033476,5,1.530894,False,1297,1240,1360

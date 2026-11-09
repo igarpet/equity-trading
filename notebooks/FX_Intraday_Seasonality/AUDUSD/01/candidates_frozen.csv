@@ -1,0 +1,2 @@
+id,pair,clock,start_time,end_time,minutes,direction,mean_bps,t,q,years_same_sign,cost_bps,pooled_bonferroni,n_days,start,end
+AUDUSD-01,AUDUSD,NY,NY 21:50,NY 01:50,240,1,2.046101,3.518203,0.044902,5,2.007937,False,1297,290,530

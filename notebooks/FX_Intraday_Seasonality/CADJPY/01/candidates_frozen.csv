@@ -1,0 +1,2 @@
+id,pair,clock,start_time,end_time,minutes,direction,mean_bps,t,q,years_same_sign,cost_bps,pooled_bonferroni,n_days,start,end
+CADJPY-01,CADJPY,NY,NY 13:40,NY 15:40,120,1,1.879026,4.112801,0.042533,5,1.874813,False,1297,1240,1360

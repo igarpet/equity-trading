@@ -1,0 +1,72 @@
+{
+  "study": "FXS01",
+  "pair": "CADJPY",
+  "fxs_version": "0.2.0",
+  "synthetic": false,
+  "window": [
+    "2016-01-01",
+    "2020-12-31"
+  ],
+  "files": {
+    "expected": 1567,
+    "present": 1567,
+    "share": 1.0
+  },
+  "tests": 2704,
+  "D1": 27,
+  "D1_D2": 27,
+  "D1_D2_D3": 13,
+  "candidates": 1,
+  "pooled_bonferroni_candidates": 0,
+  "placebo_D1_D2_D3": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "D0": "STRUCTURE_FOUND",
+  "candidates_sha256": "bb4773ca30ad43ba297416ab11fe490b8f676cb956d46a1da18c2d1d561d4adf",
+  "config": {
+    "durations": [
+      15,
+      30,
+      60,
+      120,
+      240
+    ],
+    "start_step": 5,
+    "min_coverage": 0.8,
+    "nw_lags": 5,
+    "fdr_q": 0.05,
+    "min_years_same_sign": 4,
+    "commission_bps_rt": 0.7,
+    "max_candidates": 10,
+    "min_file_share": 0.99,
+    "n_placebo": 20,
+    "conf_fdr_q": 0.05,
+    "alpha": 0.025,
+    "blocks": [
+      10,
+      20
+    ],
+    "n_boot": 10000,
+    "min_years_positive": 3,
+    "seed": 42
+  }
+}

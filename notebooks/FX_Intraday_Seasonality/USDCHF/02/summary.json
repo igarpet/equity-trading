@@ -1,0 +1,45 @@
+{
+  "study": "FXS02",
+  "pair": "USDCHF",
+  "fxs_version": "0.2.0",
+  "synthetic": false,
+  "window": [
+    "2021-01-01",
+    "2025-12-31"
+  ],
+  "candidates_sha256": "d2ef7dce07bca52db7b3e0580ceb3274acef6a64b43a7f6e0f102c90a93c0fce",
+  "discovery_D0": "STRUCTURE_FOUND",
+  "n_candidates": 1,
+  "confirmed": [],
+  "results": [
+    {
+      "id": "USDCHF-01",
+      "clock": "NY",
+      "start_time": "NY 04:00",
+      "end_time": "NY 08:00",
+      "direction": 1,
+      "pooled_bonferroni": false,
+      "disc_mean_bps": 1.982471,
+      "n_days": 1298,
+      "gross_bps": 0.17063129147088307,
+      "t": 0.29600971033043466,
+      "p_one_sided": 0.3836113328846286,
+      "net_bps": -0.5293687085291168,
+      "net2_bps": -1.2293687085291163,
+      "gross_pips": 0.13933683183191678,
+      "win_rate": 0.5030816640986132,
+      "boot_net_lower": [
+        -1.6549761049611926,
+        -1.6088670412521167
+      ],
+      "years_net_positive": 0,
+      "years": 5,
+      "K1": false,
+      "q": 0.3836113328846286,
+      "K2": false,
+      "K3": false,
+      "K4": false,
+      "verdict": "NOT_CONFIRMED"
+    }
+  ]
+}
