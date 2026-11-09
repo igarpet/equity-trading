@@ -181,3 +181,18 @@ def test_account_growth_compounds_and_kelly_drops_losers():
     assert st["max_drawdown"] == 0 and not st["ruined"]
     cand = pd.DataFrame({"clock": ["UTC", "UTC", "NY"], "start": [0, 30, 0], "end": [60, 90, 60]})
     assert F.max_concurrent(cand) == 2
+
+
+def test_prop_costs_and_rules():
+    assert F.commission_bps_per_lot("USDJPY", 3.0) == pytest.approx(0.30)
+    assert F.commission_bps_per_lot("EURUSD", 3.0) == pytest.approx(0.30 / 1.10)
+    r = F.PropRules(daily_loss=0.05, max_loss=0.10, target=0.08, min_days=1)
+    G = np.full((100, 1), 10.0); M = np.zeros((100, 1)); c = np.zeros(1)
+    o, d, e = F.run_prop_path(G, M, c, np.array([10.0]), 10_000, r, 100)       # +1% a day at 10x
+    assert o == "pass" and d == 8
+    M2 = M.copy(); M2[3, 0] = -60.0                                              # -6% open loss on day 4
+    o, d, _ = F.run_prop_path(G, M2, c, np.array([10.0]), 10_000, r, 100)
+    assert o == "daily_breach" and d == 4
+    G3 = np.full((100, 1), -4.0)
+    o, d, _ = F.run_prop_path(G3, np.full((100, 1), -4.0), c, np.array([10.0]), 10_000, r, 100)
+    assert o == "max_breach"

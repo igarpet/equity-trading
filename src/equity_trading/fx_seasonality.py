@@ -624,3 +624,84 @@ def account_stats(acc: pd.DataFrame, equity0: float) -> dict:
             "ann_vol": float(r.std() * np.sqrt(252)), "sharpe": float(r.mean() / r.std() * np.sqrt(252)) if r.std() > 0 else np.nan,
             "max_drawdown": float(acc["drawdown"].min()), "worst_year": float(yr_ret.min()), "best_year": float(yr_ret.max()),
             "ruined": bool(end <= 0)}
+
+
+# ----------------------------------------------------------------------------- prop-firm costs and rules (FXS 04, post hoc, no gates)
+# Approximate USD value of one unit of each base currency over 2021-2025, to turn a per-lot commission into bps.
+BASE_USD = {"EUR": 1.10, "GBP": 1.27, "USD": 1.0, "AUD": 0.70, "NZD": 0.63, "CAD": 0.75, "CHF": 1.10}
+
+
+def commission_bps_per_lot(pair: str, usd_per_lot_round_trip: float, lot_units: int = 100_000) -> float:
+    """Round-trip commission in bps of notional for a broker charging a fixed USD amount per lot (lot = 100,000
+    units of the base currency)."""
+    return usd_per_lot_round_trip / (lot_units * BASE_USD[pair[:3]]) * 1e4
+
+
+def structure_detail(cand: pd.DataFrame, start: dt.date, end: dt.date, stage: str, cfg: FXSConfig,
+                     panels: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Per structure and day: gross return after spread (bps) and maximum adverse excursion while open (bps,
+    <= 0, marked at minute closes on the quote you would exit at). Rows = dates, columns = ids; no trade = 0."""
+    pairs = sorted(set(cand["pair"]))
+    panels = panels or load_panels(pairs, start, end, stage, cfg)
+    G, M = {}, {}
+    for _, r in cand.iterrows():
+        p = panels[(r["pair"], r["clock"])]
+        s, e, d = int(r["start"]), int(r["end"]), int(r["direction"])
+        if d > 0:
+            path = np.log(p.bid[:, s:e + 1] / p.ask[:, [s]]) * 1e4
+        else:
+            path = np.log(p.bid[:, [s]] / p.ask[:, s:e + 1]) * 1e4
+        idx = pd.to_datetime(p.dates)
+        G[r["id"]] = pd.Series(path[:, -1], index=idx)
+        M[r["id"]] = pd.Series(np.minimum(path.min(axis=1), 0.0), index=idx)
+    return pd.DataFrame(G).sort_index().fillna(0.0), pd.DataFrame(M).sort_index().fillna(0.0)
+
+
+@dataclass(frozen=True)
+class PropRules:
+    """Stellar 2-Step style rules (FundedNext, as published Oct 2026; confirm on the firm's site)."""
+    daily_loss: float = 0.05        # of initial balance, measured from the day's starting equity
+    max_loss: float = 0.10          # of initial balance, static floor
+    target: float = 0.08            # phase 1 profit target (0.05 in phase 2; None in funded stage)
+    min_days: int = 5
+
+
+def run_prop_path(G: np.ndarray, M: np.ndarray, comm_bps: np.ndarray, w: np.ndarray, equity0: float,
+                  rules: PropRules, max_days: int, compound: bool = False) -> tuple[str, int, float]:
+    """One path through rows of G (gross bps) and M (adverse excursion bps), trading notional w x equity per
+    structure. Breach is checked on the worst case of the day (all structures at their worst excursion at once,
+    a conservative bound). Limits are fractions of the initial balance, so on a prop account size is normally kept
+    on the initial balance (compound=False): profits are withdrawn, not compounded. Returns (outcome, days,
+    final equity); outcome pass | daily_breach | max_breach | open."""
+    e = float(equity0)
+    floor = equity0 * (1 - rules.max_loss)
+    for k in range(min(max_days, len(G))):
+        base = e if compound else equity0
+        units = np.floor(base * w / 1_000) * 1_000
+        worst = e + float(units @ (M[k] - comm_bps)) / 1e4
+        if e - worst >= rules.daily_loss * equity0:
+            return "daily_breach", k + 1, worst
+        if worst <= floor:
+            return "max_breach", k + 1, worst
+        e += float(units @ (G[k] - comm_bps)) / 1e4
+        if rules.target is not None and e >= equity0 * (1 + rules.target) and k + 1 >= rules.min_days:
+            return "pass", k + 1, e
+    return "open", min(max_days, len(G)), e
+
+
+def prop_odds(G: pd.DataFrame, M: pd.DataFrame, comm_bps: pd.Series, w: pd.Series, equity0: float,
+              rules: PropRules, max_days: int, n_sims: int, seed: int, compound: bool = False) -> dict:
+    """Bootstrap whole trading days (all structures together) from the sample; odds of each outcome."""
+    rng = np.random.default_rng(seed)
+    Gv, Mv = G.to_numpy(), M.to_numpy()
+    c, wv = comm_bps.reindex(G.columns).to_numpy(), w.reindex(G.columns).fillna(0.0).to_numpy()
+    out, days, ends = [], [], []
+    for _ in range(n_sims):
+        ix = rng.integers(0, len(Gv), max_days)
+        o, d, e = run_prop_path(Gv[ix], Mv[ix], c, wv, equity0, rules, max_days, compound)
+        out.append(o); days.append(d); ends.append(e)
+    out, days, ends = np.array(out), np.array(days), np.array(ends)
+    res = {k: float((out == k).mean()) for k in ("pass", "daily_breach", "max_breach", "open")}
+    res["median_days_to_pass"] = float(np.median(days[out == "pass"])) if (out == "pass").any() else np.nan
+    res["median_end_equity"] = float(np.median(ends))
+    return res
