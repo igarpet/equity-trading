@@ -1,0 +1,46 @@
+{
+  "study": "FXS05",
+  "candidate": "EURUSD-02",
+  "synthetic": false,
+  "window": [
+    "2026-01-01",
+    "2026-11-06"
+  ],
+  "files": {
+    "expected": 267,
+    "present": 267,
+    "share": 1.0
+  },
+  "days": 221,
+  "mean_net_pips": 0.6946082149660584,
+  "se_pips": 1.1834298971993007,
+  "t": 0.5869449610914129,
+  "p_mean_gt_0": 0.2786203360268744,
+  "p_below_promised": 0.24012289861637426,
+  "mean_pips_after_spread": 1.0099399673313403,
+  "commission_pips": 0.31533175236528177,
+  "win_rate": 0.5339366515837104,
+  "usd_per_lot_trade": 6.946082149660586,
+  "typical_swing_pips": 16.47127664226762,
+  "worst_open_loss_pips": -86.77370619616943,
+  "H1": true,
+  "H2": false,
+  "H3": false,
+  "verdict": "HOLDS",
+  "prop_6k": [
+    {
+      "L": 2,
+      "lots": 0.10909090909090907,
+      "outcome": "open",
+      "day": null,
+      "end_equity": 6163.0
+    },
+    {
+      "L": 5,
+      "lots": 0.2727272727272727,
+      "outcome": "open",
+      "day": null,
+      "end_equity": 6407.0
+    }
+  ]
+}
