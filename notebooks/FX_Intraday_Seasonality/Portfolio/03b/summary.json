@@ -1,0 +1,122 @@
+{
+  "study": "FXS03b",
+  "descriptive": true,
+  "synthetic": false,
+  "window": [
+    "2021-01-01",
+    "2026-11-06"
+  ],
+  "structures": [
+    "EURUSD-02",
+    "USDJPY-01",
+    "USDJPY-02"
+  ],
+  "equity0": 6000.0,
+  "commission_usd_per_lot_rt": 4.5,
+  "spread_factor": 0.5,
+  "per_structure": [
+    {
+      "index": "EURUSD-02",
+      "trades": 1518,
+      "net pips/trade": 1.4244,
+      "USD per 1-lot trade": 14.2442,
+      "win rate": 0.5283,
+      "spread paid, pips (round trip)": 0.1725,
+      "commission, pips": 0.4555,
+      "worst open loss, pips": -153.1288
+    },
+    {
+      "index": "USDJPY-01",
+      "trades": 1519,
+      "net pips/trade": 0.7641,
+      "USD per 1-lot trade": 5.3064,
+      "win rate": 0.5253,
+      "spread paid, pips (round trip)": 0.2928,
+      "commission, pips": 0.6289,
+      "worst open loss, pips": -247.5786
+    },
+    {
+      "index": "USDJPY-02",
+      "trades": 1518,
+      "net pips/trade": 0.6817,
+      "USD per 1-lot trade": 5.2417,
+      "win rate": 0.5395,
+      "spread paid, pips (round trip)": 0.2983,
+      "commission, pips": 0.6288,
+      "worst open loss, pips": -251.1873
+    }
+  ],
+  "account": [
+    {
+      "L each": 1,
+      "lots per $10k equity (EURUSD)": 0.09,
+      "final_equity": 8337.845545272869,
+      "cagr": 0.05799054965149164,
+      "ann_vol": 0.037699588956868646,
+      "sharpe": 1.4669666648046467,
+      "max_drawdown": -0.04472277913211187,
+      "worst_year": -0.000790909502217052,
+      "best_year": 0.18951567995614993,
+      "ruined": false,
+      "worst day": -0.020252580280132878,
+      "days below start": 9
+    },
+    {
+      "L each": 2,
+      "lots per $10k equity (EURUSD)": 0.18,
+      "final_equity": 11783.918460749312,
+      "cagr": 0.12258672218400402,
+      "ann_vol": 0.07832754654204051,
+      "sharpe": 1.4690424756313873,
+      "max_drawdown": -0.089069516520763,
+      "worst_year": -0.002331105063588579,
+      "best_year": 0.4366689381417379,
+      "ruined": false,
+      "worst day": -0.04109842515785512,
+      "days below start": 9
+    },
+    {
+      "L each": 3,
+      "lots per $10k equity (EURUSD)": 0.27,
+      "final_equity": 16429.6876976367,
+      "cagr": 0.18835957791712032,
+      "ann_vol": 0.11902112574933499,
+      "sharpe": 1.4639722887860522,
+      "max_drawdown": -0.13482667126386605,
+      "worst_year": -0.007184217387760983,
+      "best_year": 0.7247425918975925,
+      "ruined": false,
+      "worst day": -0.06256305186434365,
+      "days below start": 9
+    },
+    {
+      "L each": 5,
+      "lots per $10k equity (EURUSD)": 0.45,
+      "final_equity": 31093.9382510204,
+      "cagr": 0.32559517044777686,
+      "ann_vol": 0.2001956805562609,
+      "sharpe": 1.464069424768502,
+      "max_drawdown": -0.21816816716774212,
+      "worst_year": -0.017451653543798407,
+      "best_year": 1.4634260430307933,
+      "ruined": false,
+      "worst day": -0.10567082799062939,
+      "days below start": 9
+    },
+    {
+      "L each": 10,
+      "lots per $10k equity (EURUSD)": 0.91,
+      "final_equity": 129114.95022575938,
+      "cagr": 0.6917530830963996,
+      "ann_vol": 0.40219280751222763,
+      "sharpe": 1.4680122813085852,
+      "max_drawdown": -0.40139648414606144,
+      "worst_year": -0.06020376314234699,
+      "best_year": 4.7067554519183314,
+      "ruined": false,
+      "worst day": -0.2113983395257259,
+      "days below start": 9
+    }
+  ],
+  "note": "Hindsight selection; 2026 already seen in FXS 05/06 (USDJPY-01 FAILS, USDJPY-02 INCONCLUSIVE). Not a test."
+}
