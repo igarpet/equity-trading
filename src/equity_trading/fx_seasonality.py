@@ -732,3 +732,167 @@ def prop_odds(G: pd.DataFrame, M: pd.DataFrame, comm_bps: pd.Series, w: pd.Serie
     res["median_days_to_pass"] = float(np.median(days[out == "pass"])) if (out == "pass").any() else np.nan
     res["median_end_equity"] = float(np.median(ends))
     return res
+
+
+# ----------------------------------------------------------------------------- stop-loss / trailing-stop exits (FXS 03d, descriptive)
+OHLC_COLS = ["bid_o", "bid_h", "bid_l", "bid_c", "ask_o", "ask_h", "ask_l", "ask_c"]
+
+
+@dataclass(frozen=True)
+class TrailRule:
+    """Initial stop at `initial` pips; once the best excursion reaches `activate` pips the stop jumps to
+    activate - distance and then follows `distance` pips behind every new whole pip, never moving back."""
+    initial: float = -12.0
+    activate: float = 8.0
+    distance: float = 5.0
+
+
+NO_STOP = TrailRule(initial=-np.inf, activate=np.inf, distance=0.0)
+
+
+def load_minutes_ohlc(pair: str, start: dt.date, end: dt.date, stage: str, min_file_share: float = 0.99,
+                      refresh: bool = False) -> pd.DataFrame:
+    """Full UTC minute series with bid/ask open-high-low-close (forward-filled through minutes without quotes,
+    which are then flat at the last close) and `tick`. Reads UTC day files start-1 .. end."""
+    _guard(start, end, stage)
+    cov = file_coverage(pair, start, end)
+    if cov["share"] < min_file_share:
+        raise IncompleteDataError(f"{pair}: {cov['present']}/{cov['expected']} day files for {start}..{end}")
+    files = day_files(pair, start - dt.timedelta(days=1), end)
+    last = files[-1].stem.split("_")[-1]
+    cache = (work_dir() / "FXSeasonality" / "minutes_ohlc" / f"{pair}_{start}_{end}_{FXS_VERSION}_n{len(files)}_{last}.parquet")
+    if cache.exists() and not refresh:
+        return pd.read_parquet(cache)
+    df = pd.concat([pd.read_parquet(f, columns=["ts", *OHLC_COLS, "bid_v", "ask_v"]) for f in files], ignore_index=True)
+    df["ts"] = pd.to_datetime(df["ts"], utc=True)
+    df = df.drop_duplicates("ts").set_index("ts").sort_index()
+    df = df.reindex(pd.date_range(df.index[0], df.index[-1], freq="1min", tz="UTC"))
+    tick = ((df["bid_v"].fillna(0) > 0) | (df["ask_v"].fillna(0) > 0)).to_numpy()
+    for side in ("bid", "ask"):
+        c = df[f"{side}_c"].ffill()
+        for k in ("o", "h", "l"):
+            col = df[f"{side}_{k}"]
+            df[f"{side}_{k}"] = col.where(tick, c)            # no quotes: flat at the last close
+        df[f"{side}_c"] = c
+    out = df[OHLC_COLS].astype(float).assign(tick=tick)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    out.to_parquet(cache)
+    return out
+
+
+def scale_spread(m: pd.DataFrame, factor: float) -> pd.DataFrame:
+    """Narrow (factor < 1) or widen (factor > 1) every bid/ask around the minute's closing mid."""
+    if factor == 1.0:
+        return m
+    shift = (1.0 - factor) * 0.5 * (m["ask_c"] - m["bid_c"])
+    out = m.copy()
+    for k in ("o", "h", "l", "c"):
+        out[f"bid_{k}"] = m[f"bid_{k}"] + shift
+        out[f"ask_{k}"] = m[f"ask_{k}"] - shift
+    return out
+
+
+def entry_exit_times(clock: str, start: int, end: int, dates) -> tuple[pd.DatetimeIndex, pd.DatetimeIndex]:
+    """UTC times of a structure's start and end boundaries on each trading-day label."""
+    d = pd.DatetimeIndex(pd.to_datetime(dates))
+    if clock == "NY":
+        base = (d - pd.Timedelta(days=1) + pd.Timedelta(hours=17))
+        t0 = (base + pd.Timedelta(minutes=start)).tz_localize(NY, ambiguous="NaT", nonexistent="shift_forward").tz_convert("UTC")
+        t1 = (base + pd.Timedelta(minutes=end)).tz_localize(NY, ambiguous="NaT", nonexistent="shift_forward").tz_convert("UTC")
+    else:
+        t0 = (d + pd.Timedelta(minutes=start)).tz_localize("UTC")
+        t1 = (d + pd.Timedelta(minutes=end)).tz_localize("UTC")
+    return t0, t1
+
+
+def simulate_trade(A: dict, i0: int, i_end: int | None, direction: int, pip: float, rule: TrailRule,
+                   chunk: int = 2_880) -> tuple[int, float, str, float]:
+    """One trade on minute arrays A (bid_*/ask_* numpy, same length). Entry at the close of minute i0-1 (long at
+    the ask, short at the bid); minutes i0, i0+1, ... are then checked. In each minute the stop in force at its
+    start is tested against the adverse extreme first (fill at the stop, or at the minute's open if it opened
+    beyond it); then the best excursion and the trailing stop are updated from the favourable extreme.
+    i_end (exclusive) closes the trade at the close of minute i_end-1 if no stop was hit; None = no time exit.
+    Returns (exit minute index, gross pips, reason, worst adverse pips)."""
+    if direction > 0:
+        E = A["ask_c"][i0 - 1]
+        fav_s, adv_s, opn_s, cls_s = ("bid_h", 1), ("bid_l", 1), ("bid_o", 1), ("bid_c", 1)
+    else:
+        E = A["bid_c"][i0 - 1]
+        fav_s, adv_s, opn_s, cls_s = ("ask_l", -1), ("ask_h", -1), ("ask_o", -1), ("ask_c", -1)
+    pips = lambda key, sl: (A[key][sl] - E) * direction / pip
+    n_all = len(A["bid_c"])
+    stop, best, worst = rule.initial, -np.inf, 0.0
+    j = i0
+    last = n_all if i_end is None else min(i_end, n_all)
+    while j < last:
+        k = min(j + chunk, last)
+        sl = slice(j, k)
+        fav, adv, opn = pips(fav_s[0], sl), pips(adv_s[0], sl), pips(opn_s[0], sl)
+        best_after = np.maximum.accumulate(np.r_[best, fav])[1:]
+        b = best_after + 1e-6                                   # 9 pips must not compute as 8.999999
+        trail = np.where(b >= rule.activate, np.floor(b) - rule.distance, rule.initial)
+        stop_after = np.maximum.accumulate(np.r_[stop, trail])[1:]
+        stop_before = np.r_[stop, stop_after[:-1]]
+        hit = np.flatnonzero(adv <= stop_before + 1e-9)
+        if hit.size:
+            h = hit[0]
+            fill = min(float(opn[h]), float(stop_before[h]))
+            worst = min(worst, float(np.min(adv[:h])) if h else 0.0, fill)
+            reason = "stop" if stop_before[h] <= rule.initial else "trail"
+            return j + h, fill, reason, worst
+        worst = min(worst, float(adv.min()))
+        best, stop = float(best_after[-1]), float(stop_after[-1])
+        j = k
+    exit_idx = last - 1
+    return exit_idx, float(pips(cls_s[0], slice(exit_idx, exit_idx + 1))[0]), ("time" if i_end is not None else "end_of_data"), worst
+
+
+def run_structure(m: pd.DataFrame, pair: str, clock: str, start: int, end: int, direction: int, dates,
+                  rule: TrailRule, time_exit: bool, usd_per_lot_rt: float) -> pd.DataFrame:
+    """Every trading day's trade of one structure. With time_exit=False a new entry is skipped while the previous
+    trade is still open. Net pips = gross - commission (converted at the entry price)."""
+    A = {c: m[c].to_numpy() for c in OHLC_COLS}
+    idx = m.index
+    pip = pip_size(pair)
+    t0s, t1s = entry_exit_times(clock, start, end, dates)
+    rows, busy_until = [], -1
+    for d, t0, t1 in zip(pd.to_datetime(dates), t0s, t1s):
+        if pd.isna(t0) or pd.isna(t1):
+            continue
+        i0 = idx.searchsorted(t0)
+        i_end = idx.searchsorted(t1)
+        if i0 <= 0 or i0 >= len(idx) or idx[i0] != t0 or i_end >= len(idx):
+            continue
+        if not time_exit and i0 <= busy_until:
+            continue
+        x, gross, why, worst = simulate_trade(A, i0, i_end if time_exit else None, direction, pip, rule)
+        busy_until = x
+        price = 0.5 * (A["bid_c"][i0 - 1] + A["ask_c"][i0 - 1])
+        comm = commission_bps_per_lot(pair, usd_per_lot_rt) * 1e-4 * price / pip
+        rows.append({"date": d, "entry": t0, "exit": idx[x] + pd.Timedelta(minutes=1), "minutes": x - i0 + 1,
+                     "gross_pips": gross, "net_pips": gross - comm, "reason": why, "worst_pips": worst,
+                     "price": price, "net_bps": (gross - comm) * pip / price * 1e4})
+    return pd.DataFrame(rows)
+
+
+def simulate_events(trades: pd.DataFrame, leverage: float, equity0: float, min_units: int = 1_000) -> pd.DataFrame:
+    """Account from trades with entry/exit times (several may overlap): each trade is sized at entry as
+    floor(realised equity x leverage / min_units) x min_units and realised at exit. Daily equity series (realised
+    only; open trades are not marked, so drawdowns of long holds are understated)."""
+    ev = pd.concat([trades.assign(t=trades["entry"], kind=0), trades.assign(t=trades["exit"], kind=1)])
+    ev = ev.sort_values(["t", "kind"], kind="stable")
+    e, open_units, curve = float(equity0), {}, []
+    for ix, r in ev.iterrows():
+        key = (r["structure"], r["entry"])
+        if r["kind"] == 0:
+            open_units[key] = np.floor(max(e, 0) * leverage / min_units) * min_units
+        else:
+            e = max(e + open_units.pop(key, 0.0) * r["net_bps"] / 1e4, 0.0)
+            curve.append((r["t"], e))
+    s = pd.Series([v for _, v in curve], index=pd.DatetimeIndex([t for t, _ in curve]))
+    daily = s.groupby(s.index.tz_convert("UTC").date).last()
+    daily.index = pd.to_datetime(daily.index)
+    out = pd.DataFrame({"equity": daily})
+    out["ret"] = out["equity"].pct_change().fillna(out["equity"].iloc[0] / equity0 - 1)
+    out["drawdown"] = out["equity"] / out["equity"].cummax().clip(lower=equity0) - 1
+    return out

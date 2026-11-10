@@ -222,3 +222,40 @@ def test_spread_factor_scales_cost(market_dir):
     g1, _ = F.structure_detail(cand, D(2016, 3, 2), D(2016, 3, 30), "discovery", cfg)
     g9, _ = F.structure_detail(cand, D(2016, 3, 2), D(2016, 3, 30), "discovery", cfg, spread_factor=0.9)
     assert (g9["X"] - g1["X"]).mean() == pytest.approx(0.1, abs=0.01)     # 10% of a 1 bp spread saved
+
+
+def _arrays(mid, half=0.00005):
+    mid = np.asarray(mid, float)
+    A = {}
+    for side, s in (("bid", -half), ("ask", half)):
+        for k in ("o", "h", "l", "c"):
+            A[f"{side}_{k}"] = mid + s
+    return A
+
+
+def test_trailing_stop_rules():
+    pip = 0.0001
+    # long from 1.10000 (ask 1.10005): rises 10 pips, then falls back -> trailing stop at +5 - spread effects
+    path = 1.1 + pip * np.r_[0, 0, np.arange(1, 11), np.arange(9, -15, -1)]
+    A = _arrays(path)
+    x, g, why, worst = F.simulate_trade(A, 1, None, +1, pip, F.TrailRule())
+    # best bid excursion = 1.1010 - 0.00005 - 1.10005 = +9 pips -> stop at floor(9) - 5 = +4
+    assert why == "trail" and g == pytest.approx(4.0)
+    # never reaches +8: initial stop at -12
+    A2 = _arrays(1.1 + pip * np.r_[0, 0, np.arange(1, 6), np.arange(4, -20, -1)])
+    x, g, why, _ = F.simulate_trade(A2, 1, None, +1, pip, F.TrailRule())
+    assert why == "stop" and g == pytest.approx(-12.0)
+    # with a time exit before any stop: closes at the last minute's close
+    x, g, why, _ = F.simulate_trade(A2, 1, 5, +1, pip, F.TrailRule())
+    assert why == "time" and g == pytest.approx((A2["bid_c"][4] - A2["ask_c"][0]) / pip)
+    # gap through the stop: filled at the open
+    A3 = _arrays(1.1 + pip * np.r_[0, 0, -3, -30, -31])
+    x, g, why, _ = F.simulate_trade(A3, 1, None, +1, pip, F.TrailRule())
+    assert why == "stop" and g == pytest.approx((A3["bid_o"][3] - A3["ask_c"][0]) / pip)
+    # short mirror: falls 10 pips then rises
+    A4 = _arrays(1.1 - pip * np.r_[0, 0, np.arange(1, 11), np.arange(9, -15, -1)])
+    x, g, why, _ = F.simulate_trade(A4, 1, None, -1, pip, F.TrailRule())
+    assert why == "trail" and g == pytest.approx(4.0)
+    # no-stop rule with a time exit equals the plain close-to-close trade
+    x, g, why, _ = F.simulate_trade(A, 1, 20, +1, pip, F.NO_STOP)
+    assert why == "time" and g == pytest.approx((A["bid_c"][19] - A["ask_c"][0]) / pip)
