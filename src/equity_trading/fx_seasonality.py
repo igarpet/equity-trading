@@ -745,9 +745,15 @@ class TrailRule:
     initial: float = -12.0
     activate: float = 8.0
     distance: float = 5.0
+    take_profit: float = np.inf      # pips; filled at the level, or at the minute's open if it opened beyond it
 
 
 NO_STOP = TrailRule(initial=-np.inf, activate=np.inf, distance=0.0)
+
+
+def take_profit_only(tp: float) -> TrailRule:
+    """No stop loss, a take-profit at +tp pips (FXS 03f)."""
+    return TrailRule(initial=-np.inf, activate=np.inf, distance=0.0, take_profit=tp)
 
 
 def load_minutes_ohlc(pair: str, start: dt.date, end: dt.date, stage: str, min_file_share: float = 0.99,
@@ -806,13 +812,14 @@ def entry_exit_times(clock: str, start: int, end: int, dates) -> tuple[pd.Dateti
 
 
 def simulate_trade(A: dict, i0: int, i_end: int | None, direction: int, pip: float, rule: TrailRule,
-                   chunk: int = 2_880) -> tuple[int, float, str, float]:
+                   chunk: int = 2_880) -> tuple[int, float, str, float, float]:
     """One trade on minute arrays A (bid_*/ask_* numpy, same length). Entry at the close of minute i0-1 (long at
     the ask, short at the bid); minutes i0, i0+1, ... are then checked. In each minute the stop in force at its
     start is tested against the adverse extreme first (fill at the stop, or at the minute's open if it opened
     beyond it); then the best excursion and the trailing stop are updated from the favourable extreme.
     i_end (exclusive) closes the trade at the close of minute i_end-1 if no stop was hit; None = no time exit.
-    Returns (exit minute index, gross pips, reason, worst adverse pips)."""
+    A take-profit (rule.take_profit) is checked after the stop in the same minute (a minute that could hit both
+    counts as a stop). Returns (exit minute index, gross pips, reason, worst adverse pips, best favourable pips)."""
     if direction > 0:
         E = A["ask_c"][i0 - 1]
         fav_s, adv_s, opn_s, cls_s = ("bid_h", 1), ("bid_l", 1), ("bid_o", 1), ("bid_c", 1)
@@ -834,17 +841,27 @@ def simulate_trade(A: dict, i0: int, i_end: int | None, direction: int, pip: flo
         stop_after = np.maximum.accumulate(np.r_[stop, trail])[1:]
         stop_before = np.r_[stop, stop_after[:-1]]
         hit = np.flatnonzero(adv <= stop_before + 1e-9)
-        if hit.size:
-            h = hit[0]
+        tp_hit = np.flatnonzero(fav >= rule.take_profit - 1e-9) if np.isfinite(rule.take_profit) else np.array([], int)
+        h_s = hit[0] if hit.size else None
+        h_t = tp_hit[0] if tp_hit.size else None
+        if h_s is not None and (h_t is None or h_s <= h_t):
+            h = h_s
             fill = min(float(opn[h]), float(stop_before[h]))
             worst = min(worst, float(np.min(adv[:h])) if h else 0.0, fill)
+            best_seen = max(best, float(np.max(fav[:h]))) if h else best
             reason = "stop" if stop_before[h] <= rule.initial else "trail"
-            return j + h, fill, reason, worst
+            return j + h, fill, reason, worst, best_seen
+        if h_t is not None:
+            h = h_t
+            fill = max(float(opn[h]), float(rule.take_profit))
+            worst = min(worst, float(np.min(adv[:h + 1])))
+            return j + h, fill, "tp", worst, max(best, float(np.max(fav[:h + 1])))
         worst = min(worst, float(adv.min()))
         best, stop = float(best_after[-1]), float(stop_after[-1])
         j = k
     exit_idx = last - 1
-    return exit_idx, float(pips(cls_s[0], slice(exit_idx, exit_idx + 1))[0]), ("time" if i_end is not None else "end_of_data"), worst
+    return (exit_idx, float(pips(cls_s[0], slice(exit_idx, exit_idx + 1))[0]), ("time" if i_end is not None else "end_of_data"),
+            worst, best)
 
 
 def run_structure(m: pd.DataFrame, pair: str, clock: str, start: int, end: int, direction: int, dates,
@@ -865,12 +882,12 @@ def run_structure(m: pd.DataFrame, pair: str, clock: str, start: int, end: int, 
             continue
         if not time_exit and i0 <= busy_until:
             continue
-        x, gross, why, worst = simulate_trade(A, i0, i_end if time_exit else None, direction, pip, rule)
+        x, gross, why, worst, best = simulate_trade(A, i0, i_end if time_exit else None, direction, pip, rule)
         busy_until = x
         price = 0.5 * (A["bid_c"][i0 - 1] + A["ask_c"][i0 - 1])
         comm = commission_bps_per_lot(pair, usd_per_lot_rt) * 1e-4 * price / pip
         rows.append({"date": d, "entry": t0, "exit": idx[x] + pd.Timedelta(minutes=1), "minutes": x - i0 + 1,
-                     "gross_pips": gross, "net_pips": gross - comm, "reason": why, "worst_pips": worst,
+                     "gross_pips": gross, "net_pips": gross - comm, "reason": why, "worst_pips": worst, "best_pips": best,
                      "price": price, "net_bps": (gross - comm) * pip / price * 1e4})
     return pd.DataFrame(rows)
 

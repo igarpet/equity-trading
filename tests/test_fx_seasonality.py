@@ -238,24 +238,41 @@ def test_trailing_stop_rules():
     # long from 1.10000 (ask 1.10005): rises 10 pips, then falls back -> trailing stop at +5 - spread effects
     path = 1.1 + pip * np.r_[0, 0, np.arange(1, 11), np.arange(9, -15, -1)]
     A = _arrays(path)
-    x, g, why, worst = F.simulate_trade(A, 1, None, +1, pip, F.TrailRule())
+    x, g, why, worst, _ = F.simulate_trade(A, 1, None, +1, pip, F.TrailRule())
     # best bid excursion = 1.1010 - 0.00005 - 1.10005 = +9 pips -> stop at floor(9) - 5 = +4
     assert why == "trail" and g == pytest.approx(4.0)
     # never reaches +8: initial stop at -12
     A2 = _arrays(1.1 + pip * np.r_[0, 0, np.arange(1, 6), np.arange(4, -20, -1)])
-    x, g, why, _ = F.simulate_trade(A2, 1, None, +1, pip, F.TrailRule())
+    x, g, why, _, _ = F.simulate_trade(A2, 1, None, +1, pip, F.TrailRule())
     assert why == "stop" and g == pytest.approx(-12.0)
     # with a time exit before any stop: closes at the last minute's close
-    x, g, why, _ = F.simulate_trade(A2, 1, 5, +1, pip, F.TrailRule())
+    x, g, why, _, _ = F.simulate_trade(A2, 1, 5, +1, pip, F.TrailRule())
     assert why == "time" and g == pytest.approx((A2["bid_c"][4] - A2["ask_c"][0]) / pip)
     # gap through the stop: filled at the open
     A3 = _arrays(1.1 + pip * np.r_[0, 0, -3, -30, -31])
-    x, g, why, _ = F.simulate_trade(A3, 1, None, +1, pip, F.TrailRule())
+    x, g, why, _, _ = F.simulate_trade(A3, 1, None, +1, pip, F.TrailRule())
     assert why == "stop" and g == pytest.approx((A3["bid_o"][3] - A3["ask_c"][0]) / pip)
     # short mirror: falls 10 pips then rises
     A4 = _arrays(1.1 - pip * np.r_[0, 0, np.arange(1, 11), np.arange(9, -15, -1)])
-    x, g, why, _ = F.simulate_trade(A4, 1, None, -1, pip, F.TrailRule())
+    x, g, why, _, _ = F.simulate_trade(A4, 1, None, -1, pip, F.TrailRule())
     assert why == "trail" and g == pytest.approx(4.0)
     # no-stop rule with a time exit equals the plain close-to-close trade
-    x, g, why, _ = F.simulate_trade(A, 1, 20, +1, pip, F.NO_STOP)
+    x, g, why, _, _ = F.simulate_trade(A, 1, 20, +1, pip, F.NO_STOP)
     assert why == "time" and g == pytest.approx((A["bid_c"][19] - A["ask_c"][0]) / pip)
+
+
+def test_take_profit_only():
+    pip = 0.0001
+    tp = F.take_profit_only(15.0)
+    # long rises 20 pips: closed at +15 exactly
+    A = _arrays(1.1 + pip * np.r_[0, 0, np.arange(1, 21)])
+    x, g, why, worst, best = F.simulate_trade(A, 1, None, +1, pip, tp)
+    assert why == "tp" and g == pytest.approx(15.0) and best >= 15.0 - 1e-6
+    # falls 40 pips then recovers to -5 at the time exit: no stop loss, closed at the time exit
+    A2 = _arrays(1.1 + pip * np.r_[0, 0, -np.arange(1, 41), -np.arange(39, 4, -1)])
+    x, g, why, worst, best = F.simulate_trade(A2, 1, len(A2["bid_c"]), +1, pip, tp)
+    assert why == "time" and worst < -39 and g == pytest.approx((A2["bid_c"][-1] - A2["ask_c"][0]) / pip)
+    # gap above the take-profit: filled at the (better) open
+    A3 = _arrays(1.1 + pip * np.r_[0, 0, 3, 30, 31])
+    x, g, why, _, _ = F.simulate_trade(A3, 1, None, +1, pip, tp)
+    assert why == "tp" and g == pytest.approx((A3["bid_o"][3] - A3["ask_c"][0]) / pip)
