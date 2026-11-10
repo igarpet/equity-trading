@@ -1,0 +1,438 @@
+{
+  "study": "FXS03h",
+  "lookahead": true,
+  "synthetic": false,
+  "holding_times": [
+    {
+      "structure": "EURUSD-01",
+      "BASE": 120,
+      "OPT_ALL": 135,
+      "OPT_AVG": 90,
+      "best 2016-2020 (in sample)": 140,
+      "best 2021-2025": 125,
+      "best 2026": 5
+    },
+    {
+      "structure": "EURUSD-02",
+      "BASE": 240,
+      "OPT_ALL": 240,
+      "OPT_AVG": 205,
+      "best 2016-2020 (in sample)": 240,
+      "best 2021-2025": 240,
+      "best 2026": 140
+    },
+    {
+      "structure": "USDJPY-01",
+      "BASE": 60,
+      "OPT_ALL": 90,
+      "OPT_AVG": 45,
+      "best 2016-2020 (in sample)": 90,
+      "best 2021-2025": 25,
+      "best 2026": 25
+    },
+    {
+      "structure": "USDJPY-02",
+      "BASE": 30,
+      "OPT_ALL": 30,
+      "OPT_AVG": 35,
+      "best 2016-2020 (in sample)": 30,
+      "best 2021-2025": 30,
+      "best 2026": 40
+    }
+  ],
+  "pips": [
+    {
+      "structure": "EURUSD-01",
+      "variant": "BASE",
+      "hold": 120,
+      "2016-2020 (in sample)": 0.8428,
+      "2021-2025": -0.0968,
+      "2026": -1.7909,
+      "all": 0.203,
+      "win rate": 0.5032
+    },
+    {
+      "structure": "EURUSD-01",
+      "variant": "OPT_ALL",
+      "hold": 135,
+      "2016-2020 (in sample)": 1.0196,
+      "2021-2025": -0.0639,
+      "2026": -1.9,
+      "all": 0.291,
+      "win rate": 0.5146
+    },
+    {
+      "structure": "EURUSD-01",
+      "variant": "OPT_AVG",
+      "hold": 90,
+      "2016-2020 (in sample)": 0.4552,
+      "2021-2025": -0.3717,
+      "2026": -1.1318,
+      "all": -0.0505,
+      "win rate": 0.4904
+    },
+    {
+      "structure": "EURUSD-02",
+      "variant": "BASE",
+      "hold": 240,
+      "2016-2020 (in sample)": 2.2022,
+      "2021-2025": 1.5368,
+      "2026": 0.7144,
+      "all": 1.7787,
+      "win rate": 0.5341
+    },
+    {
+      "structure": "EURUSD-02",
+      "variant": "OPT_ALL",
+      "hold": 240,
+      "2016-2020 (in sample)": 2.2022,
+      "2021-2025": 1.5368,
+      "2026": 0.7144,
+      "all": 1.7787,
+      "win rate": 0.5341
+    },
+    {
+      "structure": "EURUSD-02",
+      "variant": "OPT_AVG",
+      "hold": 205,
+      "2016-2020 (in sample)": 1.2562,
+      "2021-2025": 0.2,
+      "2026": -0.4828,
+      "all": 0.6329,
+      "win rate": 0.521
+    },
+    {
+      "structure": "USDJPY-01",
+      "variant": "BASE",
+      "hold": 60,
+      "2016-2020 (in sample)": 1.3955,
+      "2021-2025": 0.9685,
+      "2026": -0.6861,
+      "all": 1.0353,
+      "win rate": 0.5309
+    },
+    {
+      "structure": "USDJPY-01",
+      "variant": "OPT_ALL",
+      "hold": 90,
+      "2016-2020 (in sample)": 2.26,
+      "2021-2025": 0.9234,
+      "2026": -0.2262,
+      "all": 1.4488,
+      "win rate": 0.5352
+    },
+    {
+      "structure": "USDJPY-01",
+      "variant": "OPT_AVG",
+      "hold": 45,
+      "2016-2020 (in sample)": 0.8026,
+      "2021-2025": 0.7312,
+      "2026": -0.1929,
+      "all": 0.6916,
+      "win rate": 0.5213
+    },
+    {
+      "structure": "USDJPY-02",
+      "variant": "BASE",
+      "hold": 30,
+      "2016-2020 (in sample)": 0.5193,
+      "2021-2025": 0.8064,
+      "2026": -0.207,
+      "all": 0.5946,
+      "win rate": 0.5277
+    },
+    {
+      "structure": "USDJPY-02",
+      "variant": "OPT_ALL",
+      "hold": 30,
+      "2016-2020 (in sample)": 0.5193,
+      "2021-2025": 0.8064,
+      "2026": -0.207,
+      "all": 0.5946,
+      "win rate": 0.5277
+    },
+    {
+      "structure": "USDJPY-02",
+      "variant": "OPT_AVG",
+      "hold": 35,
+      "2016-2020 (in sample)": -0.2721,
+      "2021-2025": -0.3624,
+      "2026": -0.9376,
+      "all": -0.366,
+      "win rate": 0.4975
+    }
+  ],
+  "account": [
+    {
+      "set": "all four",
+      "variant": "BASE",
+      "L each": 1,
+      "final_equity": 13687,
+      "cagr %": 7.9,
+      "max drawdown %": -7.3,
+      "worst year %": -3.1
+    },
+    {
+      "set": "all four",
+      "variant": "BASE",
+      "L each": 2,
+      "final_equity": 32189,
+      "cagr %": 16.8,
+      "max drawdown %": -14.5,
+      "worst year %": -6.6
+    },
+    {
+      "set": "all four",
+      "variant": "BASE",
+      "L each": 3,
+      "final_equity": 73882,
+      "cagr %": 26.1,
+      "max drawdown %": -21.3,
+      "worst year %": -10.0
+    },
+    {
+      "set": "all four",
+      "variant": "BASE",
+      "L each": 5,
+      "final_equity": 362543,
+      "cagr %": 46.0,
+      "max drawdown %": -33.9,
+      "worst year %": -16.6
+    },
+    {
+      "set": "all four",
+      "variant": "BASE",
+      "L each": 10,
+      "final_equity": 12738073,
+      "cagr %": 102.7,
+      "max drawdown %": -59.2,
+      "worst year %": -32.9
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_ALL",
+      "L each": 1,
+      "final_equity": 15368,
+      "cagr %": 9.1,
+      "max drawdown %": -7.2,
+      "worst year %": -2.8
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_ALL",
+      "L each": 2,
+      "final_equity": 41178,
+      "cagr %": 19.4,
+      "max drawdown %": -14.6,
+      "worst year %": -5.8
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_ALL",
+      "L each": 3,
+      "final_equity": 105339,
+      "cagr %": 30.3,
+      "max drawdown %": -21.5,
+      "worst year %": -8.9
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_ALL",
+      "L each": 5,
+      "final_equity": 645219,
+      "cagr %": 54.0,
+      "max drawdown %": -34.4,
+      "worst year %": -15.0
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_ALL",
+      "L each": 10,
+      "final_equity": 36640308,
+      "cagr %": 123.5,
+      "max drawdown %": -60.3,
+      "worst year %": -30.7
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_AVG",
+      "L each": 1,
+      "final_equity": 7320,
+      "cagr %": 1.9,
+      "max drawdown %": -15.3,
+      "worst year %": -4.3
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_AVG",
+      "L each": 2,
+      "final_equity": 9052,
+      "cagr %": 3.9,
+      "max drawdown %": -29.7,
+      "worst year %": -8.9
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_AVG",
+      "L each": 3,
+      "final_equity": 10874,
+      "cagr %": 5.6,
+      "max drawdown %": -42.0,
+      "worst year %": -13.2
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_AVG",
+      "L each": 5,
+      "final_equity": 14769,
+      "cagr %": 8.7,
+      "max drawdown %": -60.7,
+      "worst year %": -21.7
+    },
+    {
+      "set": "all four",
+      "variant": "OPT_AVG",
+      "L each": 10,
+      "final_equity": 23245,
+      "cagr %": 13.3,
+      "max drawdown %": -86.4,
+      "worst year %": -40.2
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "BASE",
+      "L each": 1,
+      "final_equity": 13015,
+      "cagr %": 7.4,
+      "max drawdown %": -5.1,
+      "worst year %": -0.2
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "BASE",
+      "L each": 2,
+      "final_equity": 29271,
+      "cagr %": 15.7,
+      "max drawdown %": -10.5,
+      "worst year %": 0.0
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "BASE",
+      "L each": 3,
+      "final_equity": 64684,
+      "cagr %": 24.5,
+      "max drawdown %": -15.6,
+      "worst year %": -0.2
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "BASE",
+      "L each": 5,
+      "final_equity": 293272,
+      "cagr %": 43.2,
+      "max drawdown %": -25.1,
+      "worst year %": -0.8
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "BASE",
+      "L each": 10,
+      "final_equity": 9073033,
+      "cagr %": 96.5,
+      "max drawdown %": -45.4,
+      "worst year %": -4.2
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_ALL",
+      "L each": 1,
+      "final_equity": 14423,
+      "cagr %": 8.4,
+      "max drawdown %": -5.5,
+      "worst year %": 0.7
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_ALL",
+      "L each": 2,
+      "final_equity": 36088,
+      "cagr %": 18.0,
+      "max drawdown %": -11.1,
+      "worst year %": 1.3
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_ALL",
+      "L each": 3,
+      "final_equity": 87365,
+      "cagr %": 28.0,
+      "max drawdown %": -16.5,
+      "worst year %": 1.7
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_ALL",
+      "L each": 5,
+      "final_equity": 476312,
+      "cagr %": 49.7,
+      "max drawdown %": -26.2,
+      "worst year %": 2.3
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_ALL",
+      "L each": 10,
+      "final_equity": 22246450,
+      "cagr %": 113.4,
+      "max drawdown %": -47.0,
+      "worst year %": 1.3
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_AVG",
+      "L each": 1,
+      "final_equity": 7433,
+      "cagr %": 2.0,
+      "max drawdown %": -11.4,
+      "worst year %": -2.7
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_AVG",
+      "L each": 2,
+      "final_equity": 9286,
+      "cagr %": 4.1,
+      "max drawdown %": -22.7,
+      "worst year %": -5.3
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_AVG",
+      "L each": 3,
+      "final_equity": 11388,
+      "cagr %": 6.1,
+      "max drawdown %": -32.6,
+      "worst year %": -8.1
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_AVG",
+      "L each": 5,
+      "final_equity": 16427,
+      "cagr %": 9.7,
+      "max drawdown %": -49.5,
+      "worst year %": -14.0
+    },
+    {
+      "set": "without EURUSD-01",
+      "variant": "OPT_AVG",
+      "L each": 10,
+      "final_equity": 30990,
+      "cagr %": 16.4,
+      "max drawdown %": -77.1,
+      "worst year %": -29.0
+    }
+  ],
+  "note": "Exit times chosen on the same data they are tested on: an upper bound, not an expectation."
+}
