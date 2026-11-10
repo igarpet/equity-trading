@@ -212,3 +212,13 @@ def test_holdout_stage_only_in_2026():
         F._guard(D(2025, 12, 1), D(2026, 11, 6), "holdout")
     with pytest.raises(F.HoldoutError):
         F._guard(D(2025, 1, 1), D(2026, 1, 5), "confirmation")
+
+
+def test_spread_factor_scales_cost(market_dir):
+    base = market_dir / "Dukascopy"
+    F.write_synthetic_candles(base, "EURUSD", D(2016, 3, 1), D(2016, 3, 31), seed=3, spread_bps=1.0)
+    cfg = F.FXSConfig()
+    cand = pd.DataFrame([{"id": "X", "pair": "EURUSD", "clock": "NY", "start": 0, "end": 60, "direction": 1}])
+    g1, _ = F.structure_detail(cand, D(2016, 3, 2), D(2016, 3, 30), "discovery", cfg)
+    g9, _ = F.structure_detail(cand, D(2016, 3, 2), D(2016, 3, 30), "discovery", cfg, spread_factor=0.9)
+    assert (g9["X"] - g1["X"]).mean() == pytest.approx(0.1, abs=0.01)     # 10% of a 1 bp spread saved

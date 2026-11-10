@@ -660,23 +660,26 @@ def usd_per_pip_per_lot(pair: str, price, lot_units: int = 100_000):
 
 
 def structure_detail(cand: pd.DataFrame, start: dt.date, end: dt.date, stage: str, cfg: FXSConfig,
-                     panels: dict | None = None, with_price: bool = False):
+                     panels: dict | None = None, with_price: bool = False, spread_factor: float = 1.0):
     """Per structure and day: gross return after spread (bps) and maximum adverse excursion while open (bps,
-    <= 0, marked at minute closes on the quote you would exit at). Rows = dates, columns = ids; no trade = 0."""
+    <= 0, marked at minute closes on the quote you would exit at). Rows = dates, columns = ids; no trade = 0.
+    spread_factor scales the quoted spread around the mid (0.9 = a broker 10% tighter than Dukascopy)."""
     pairs = sorted(set(cand["pair"]))
     panels = panels or load_panels(pairs, start, end, stage, cfg)
     G, M, P = {}, {}, {}
     for _, r in cand.iterrows():
         p = panels[(r["pair"], r["clock"])]
         s, e, d = int(r["start"]), int(r["end"]), int(r["direction"])
+        mid, half = 0.5 * (p.bid + p.ask), 0.5 * (p.ask - p.bid) * spread_factor
+        bid, ask = mid - half, mid + half
         if d > 0:
-            path = np.log(p.bid[:, s:e + 1] / p.ask[:, [s]]) * 1e4
+            path = np.log(bid[:, s:e + 1] / ask[:, [s]]) * 1e4
         else:
-            path = np.log(p.bid[:, [s]] / p.ask[:, s:e + 1]) * 1e4
+            path = np.log(bid[:, [s]] / ask[:, s:e + 1]) * 1e4
         idx = pd.to_datetime(p.dates)
         G[r["id"]] = pd.Series(path[:, -1], index=idx)
         M[r["id"]] = pd.Series(np.minimum(path.min(axis=1), 0.0), index=idx)
-        P[r["id"]] = pd.Series(0.5 * (p.bid[:, s] + p.ask[:, s]), index=idx)
+        P[r["id"]] = pd.Series(mid[:, s], index=idx)
     out = (pd.DataFrame(G).sort_index().fillna(0.0), pd.DataFrame(M).sort_index().fillna(0.0))
     return (*out, pd.DataFrame(P).sort_index().ffill().bfill()) if with_price else out
 
