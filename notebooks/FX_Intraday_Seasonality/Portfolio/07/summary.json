@@ -1,0 +1,373 @@
+{
+  "study": "FXS07",
+  "descriptive": true,
+  "synthetic": false,
+  "signals": {
+    "EURUSD-02": [
+      "EURUSD",
+      "NY",
+      660,
+      900,
+      -1
+    ],
+    "USDJPY-01": [
+      "USDJPY",
+      "UTC",
+      55,
+      115,
+      -1
+    ],
+    "USDJPY-02": [
+      "USDJPY",
+      "UTC",
+      25,
+      55,
+      1
+    ],
+    "N-EU-1": [
+      "EURUSD",
+      "NY",
+      885,
+      900,
+      -1
+    ],
+    "N-UJ-1": [
+      "USDJPY",
+      "UTC",
+      55,
+      70,
+      -1
+    ],
+    "N-UJ-3": [
+      "USDJPY",
+      "NY",
+      1340,
+      1400,
+      1
+    ],
+    "N-EJ-1": [
+      "EURJPY",
+      "NY",
+      1315,
+      1435,
+      1
+    ],
+    "N-EJ-2": [
+      "EURJPY",
+      "NY",
+      780,
+      900,
+      -1
+    ]
+  },
+  "sets": {
+    "PREVIOUS": [
+      "EURUSD-02",
+      "USDJPY-01",
+      "USDJPY-02"
+    ],
+    "NEW": [
+      "N-EU-1",
+      "N-UJ-1",
+      "USDJPY-02",
+      "N-UJ-3",
+      "N-EJ-1",
+      "N-EJ-2"
+    ],
+    "ALL": [
+      "EURUSD-02",
+      "USDJPY-01",
+      "USDJPY-02",
+      "N-EU-1",
+      "N-UJ-1",
+      "N-UJ-3",
+      "N-EJ-1",
+      "N-EJ-2"
+    ]
+  },
+  "commission_usd_per_lot_rt": 3.0,
+  "spread_factor": 0.9,
+  "equity0": 6000.0,
+  "signals_table": [
+    {
+      "signal": "EURUSD-02",
+      "rule": "sell EURUSD NY 04:00 -> 08:00",
+      "2020 net pips": 0.5834,
+      "2020 t": 0.3491,
+      "2021-2025 net pips": 1.558,
+      "2021-2025 t": 2.6269,
+      "2026 net pips": 0.7261,
+      "2026 t": 0.6554,
+      "all net pips": 1.3123,
+      "win rate": 0.5284,
+      "USD per 1-lot trade": 13.1226,
+      "swing pips": 21.7402
+    },
+    {
+      "signal": "USDJPY-01",
+      "rule": "sell USDJPY UTC 00:55 -> 01:55",
+      "2020 net pips": 3.006,
+      "2020 t": 2.8176,
+      "2021-2025 net pips": 0.9808,
+      "2021-2025 t": 1.8966,
+      "2026 net pips": -0.6779,
+      "2026 t": -0.6245,
+      "all net pips": 1.0707,
+      "win rate": 0.5306,
+      "USD per 1-lot trade": 8.4863,
+      "swing pips": 18.1518
+    },
+    {
+      "signal": "USDJPY-02",
+      "rule": "buy USDJPY UTC 00:25 -> 00:55",
+      "2020 net pips": 0.5789,
+      "2020 t": 0.9014,
+      "2021-2025 net pips": 0.7997,
+      "2021-2025 t": 2.119,
+      "2026 net pips": -0.2172,
+      "2026 t": -0.1791,
+      "all net pips": 0.6411,
+      "win rate": 0.5267,
+      "USD per 1-lot trade": 5.0896,
+      "swing pips": 13.8137
+    },
+    {
+      "signal": "N-EU-1",
+      "rule": "sell EURUSD NY 07:45 -> 08:00",
+      "2020 net pips": -1.1729,
+      "2020 t": -2.3476,
+      "2021-2025 net pips": 0.5505,
+      "2021-2025 t": 3.1124,
+      "2026 net pips": 0.3395,
+      "2026 t": 1.0508,
+      "all net pips": 0.2724,
+      "win rate": 0.5211,
+      "USD per 1-lot trade": 2.7241,
+      "swing pips": 6.5031
+    },
+    {
+      "signal": "N-UJ-1",
+      "rule": "sell USDJPY UTC 00:55 -> 01:10",
+      "2020 net pips": 0.1391,
+      "2020 t": 0.3605,
+      "2021-2025 net pips": 0.7027,
+      "2021-2025 t": 2.3981,
+      "2026 net pips": -0.3226,
+      "2026 t": -0.523,
+      "all net pips": 0.4929,
+      "win rate": 0.5042,
+      "USD per 1-lot trade": 3.3701,
+      "swing pips": 9.8723
+    },
+    {
+      "signal": "N-UJ-3",
+      "rule": "buy USDJPY NY 15:20 -> 16:20",
+      "2020 net pips": -1.7277,
+      "2020 t": -3.3575,
+      "2021-2025 net pips": 0.8188,
+      "2021-2025 t": 3.1848,
+      "2026 net pips": 0.1053,
+      "2026 t": 0.1423,
+      "all net pips": 0.358,
+      "win rate": 0.4969,
+      "USD per 1-lot trade": 1.7714,
+      "swing pips": 9.4019
+    },
+    {
+      "signal": "N-EJ-1",
+      "rule": "buy EURJPY NY 14:55 -> 16:55",
+      "2020 net pips": -0.3683,
+      "2020 t": -0.4507,
+      "2021-2025 net pips": 0.7351,
+      "2021-2025 t": 1.6585,
+      "2026 net pips": 0.0698,
+      "2026 t": 0.0661,
+      "all net pips": 0.4912,
+      "win rate": 0.5008,
+      "USD per 1-lot trade": 3.4073,
+      "swing pips": 15.5554
+    },
+    {
+      "signal": "N-EJ-2",
+      "rule": "sell EURJPY NY 06:00 -> 08:00",
+      "2020 net pips": -1.738,
+      "2020 t": -1.3431,
+      "2021-2025 net pips": 0.7772,
+      "2021-2025 t": 1.2016,
+      "2026 net pips": 0.6023,
+      "2026 t": 0.3211,
+      "all net pips": 0.3878,
+      "win rate": 0.4857,
+      "USD per 1-lot trade": 2.5199,
+      "swing pips": 23.5895
+    }
+  ],
+  "account": [
+    {
+      "set": "PREVIOUS",
+      "signals": 3,
+      "L each": 1,
+      "final_equity": 9147,
+      "cagr %": 6.4,
+      "sharpe": 1.52,
+      "max drawdown %": -4.8,
+      "worst year %": 0.1,
+      "worst day % (all open at worst)": -2.1
+    },
+    {
+      "set": "PREVIOUS",
+      "signals": 3,
+      "L each": 2,
+      "final_equity": 14182,
+      "cagr %": 13.4,
+      "sharpe": 1.5,
+      "max drawdown %": -10.3,
+      "worst year %": 0.0,
+      "worst day % (all open at worst)": -4.2
+    },
+    {
+      "set": "PREVIOUS",
+      "signals": 3,
+      "L each": 3,
+      "final_equity": 21582,
+      "cagr %": 20.6,
+      "sharpe": 1.5,
+      "max drawdown %": -15.4,
+      "worst year %": -0.1,
+      "worst day % (all open at worst)": -6.3
+    },
+    {
+      "set": "PREVIOUS",
+      "signals": 3,
+      "L each": 5,
+      "final_equity": 48575,
+      "cagr %": 35.7,
+      "sharpe": 1.5,
+      "max drawdown %": -24.8,
+      "worst year %": -0.7,
+      "worst day % (all open at worst)": -10.5
+    },
+    {
+      "set": "PREVIOUS",
+      "signals": 3,
+      "L each": 10,
+      "final_equity": 293793,
+      "cagr %": 76.6,
+      "sharpe": 1.5,
+      "max drawdown %": -45.2,
+      "worst year %": -4.0,
+      "worst day % (all open at worst)": -21.2
+    },
+    {
+      "set": "NEW",
+      "signals": 6,
+      "L each": 1,
+      "final_equity": 8039,
+      "cagr %": 4.4,
+      "sharpe": 1.08,
+      "max drawdown %": -13.6,
+      "worst year %": -8.1,
+      "worst day % (all open at worst)": -3.7
+    },
+    {
+      "set": "NEW",
+      "signals": 6,
+      "L each": 2,
+      "final_equity": 10898,
+      "cagr %": 9.1,
+      "sharpe": 1.07,
+      "max drawdown %": -26.6,
+      "worst year %": -17.0,
+      "worst day % (all open at worst)": -7.3
+    },
+    {
+      "set": "NEW",
+      "signals": 6,
+      "L each": 3,
+      "final_equity": 14715,
+      "cagr %": 14.0,
+      "sharpe": 1.08,
+      "max drawdown %": -37.6,
+      "worst year %": -24.8,
+      "worst day % (all open at worst)": -11.0
+    },
+    {
+      "set": "NEW",
+      "signals": 6,
+      "L each": 5,
+      "final_equity": 25121,
+      "cagr %": 23.3,
+      "sharpe": 1.07,
+      "max drawdown %": -55.3,
+      "worst year %": -39.1,
+      "worst day % (all open at worst)": -18.9
+    },
+    {
+      "set": "NEW",
+      "signals": 6,
+      "L each": 10,
+      "final_equity": 78817,
+      "cagr %": 45.7,
+      "sharpe": 1.08,
+      "max drawdown %": -80.8,
+      "worst year %": -64.7,
+      "worst day % (all open at worst)": -37.8
+    },
+    {
+      "set": "ALL",
+      "signals": 8,
+      "L each": 1,
+      "final_equity": 11266,
+      "cagr %": 9.6,
+      "sharpe": 1.48,
+      "max drawdown %": -15.6,
+      "worst year %": -1.1,
+      "worst day % (all open at worst)": -3.6
+    },
+    {
+      "set": "ALL",
+      "signals": 8,
+      "L each": 2,
+      "final_equity": 21610,
+      "cagr %": 20.6,
+      "sharpe": 1.48,
+      "max drawdown %": -30.2,
+      "worst year %": -2.7,
+      "worst day % (all open at worst)": -7.8
+    },
+    {
+      "set": "ALL",
+      "signals": 8,
+      "L each": 3,
+      "final_equity": 40258,
+      "cagr %": 32.1,
+      "sharpe": 1.48,
+      "max drawdown %": -42.4,
+      "worst year %": -4.4,
+      "worst day % (all open at worst)": -11.7
+    },
+    {
+      "set": "ALL",
+      "signals": 8,
+      "L each": 5,
+      "final_equity": 124744,
+      "cagr %": 55.8,
+      "sharpe": 1.48,
+      "max drawdown %": -61.5,
+      "worst year %": -10.8,
+      "worst day % (all open at worst)": -19.5
+    },
+    {
+      "set": "ALL",
+      "signals": 8,
+      "L each": 10,
+      "final_equity": 1236642,
+      "cagr %": 117.8,
+      "sharpe": 1.48,
+      "max drawdown %": -86.8,
+      "worst year %": -31.5,
+      "worst day % (all open at worst)": -39.2
+    }
+  ],
+  "note": "NEW signals were found on 2021-2025 (in sample there); 2026 is unseen only for N-UJ-3 and N-EJ-2."
+}
