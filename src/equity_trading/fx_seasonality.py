@@ -291,15 +291,21 @@ def nw_tstats(R: np.ndarray, lags: int):
 
 
 def bh_reject(p: np.ndarray, q: float) -> tuple[np.ndarray, np.ndarray]:
-    """Benjamini-Hochberg: reject mask and adjusted q-values."""
+    """Benjamini-Hochberg: reject mask and adjusted q-values. NaN p-values are not tests: they get q = NaN,
+    are never rejected, and do not count in the family size (before FXS 10, a NaN made every q NaN)."""
     p = np.asarray(p, float)
-    n = len(p)
-    order = np.argsort(p)
-    ranked = p[order] * n / np.arange(1, n + 1)
-    qv = np.minimum.accumulate(ranked[::-1])[::-1]
-    qvals = np.empty(n)
-    qvals[order] = np.minimum(qv, 1.0)
-    return qvals <= q, qvals
+    qvals = np.full(len(p), np.nan)
+    ok = ~np.isnan(p)
+    n = int(ok.sum())
+    if n:
+        po = p[ok]
+        order = np.argsort(po)
+        ranked = po[order] * n / np.arange(1, n + 1)
+        qv = np.minimum.accumulate(ranked[::-1])[::-1]
+        qo = np.empty(n)
+        qo[order] = np.minimum(qv, 1.0)
+        qvals[ok] = qo
+    return np.nan_to_num(qvals, nan=np.inf) <= q, qvals
 
 
 def scan_panel(panel: Panel, cfg: FXSConfig, rng: np.random.Generator | None = None) -> pd.DataFrame:

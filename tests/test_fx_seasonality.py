@@ -276,3 +276,11 @@ def test_take_profit_only():
     A3 = _arrays(1.1 + pip * np.r_[0, 0, 3, 30, 31])
     x, g, why, _, _ = F.simulate_trade(A3, 1, None, +1, pip, tp)
     assert why == "tp" and g == pytest.approx((A3["bid_o"][3] - A3["ask_c"][0]) / pip)
+
+
+def test_bh_ignores_nan():
+    p = np.array([0.001, np.nan, 0.04, 0.5])
+    rej, q = F.bh_reject(p, 0.05)
+    assert np.isnan(q[1]) and not rej[1]
+    ref_rej, ref_q = F.bh_reject(np.array([0.001, 0.04, 0.5]), 0.05)
+    assert np.allclose(q[[0, 2, 3]], ref_q) and (rej[[0, 2, 3]] == ref_rej).all()
