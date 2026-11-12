@@ -1,0 +1,287 @@
+{
+  "study": "FXS10b",
+  "prereg": "discussions/FX_Intraday_Seasonality/006_claude_fxs10b_winning_days_preregistration.md",
+  "synthetic": false,
+  "window": "2020-2025",
+  "candidates_sha256": "3bce9b89b52e41043c9556c8ebaadbbfdfed3c56b35b4dc3687b0528a10f45ff",
+  "E0": [
+    {
+      "signal": "EURUSD-02",
+      "E1": 0,
+      "E1+E2": 0,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 0,
+      "placebo mean": 0.1,
+      "placebo p95": 0.10000000000000142,
+      "E0": "NO_STRUCTURE"
+    },
+    {
+      "signal": "USDJPY-01",
+      "E1": 0,
+      "E1+E2": 0,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 0,
+      "placebo mean": 0.0,
+      "placebo p95": 0.0,
+      "E0": "NO_STRUCTURE"
+    },
+    {
+      "signal": "USDJPY-02",
+      "E1": 0,
+      "E1+E2": 0,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 0,
+      "placebo mean": 0.35,
+      "placebo p95": 0.350000000000005,
+      "E0": "NO_STRUCTURE"
+    },
+    {
+      "signal": "N-EU-1",
+      "E1": 0,
+      "E1+E2": 0,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 0,
+      "placebo mean": 0.0,
+      "placebo p95": 0.0,
+      "E0": "NO_STRUCTURE"
+    },
+    {
+      "signal": "N-UJ-1",
+      "E1": 0,
+      "E1+E2": 0,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 0,
+      "placebo mean": 0.0,
+      "placebo p95": 0.0,
+      "E0": "NO_STRUCTURE"
+    },
+    {
+      "signal": "N-UJ-3",
+      "E1": 7,
+      "E1+E2": 7,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 7,
+      "placebo mean": 0.0,
+      "placebo p95": 0.0,
+      "E0": "STRUCTURE_FOUND"
+    },
+    {
+      "signal": "N-EJ-1",
+      "E1": 4,
+      "E1+E2": 4,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 4,
+      "placebo mean": 0.0,
+      "placebo p95": 0.0,
+      "E0": "STRUCTURE_FOUND"
+    },
+    {
+      "signal": "N-EJ-2",
+      "E1": 0,
+      "E1+E2": 0,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 0,
+      "placebo mean": 0.05,
+      "placebo p95": 0.05000000000000071,
+      "E0": "NO_STRUCTURE"
+    },
+    {
+      "signal": "AUDJPY-N1",
+      "E1": 1,
+      "E1+E2": 1,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 1,
+      "placebo mean": 0.0,
+      "placebo p95": 0.0,
+      "E0": "STRUCTURE_FOUND"
+    },
+    {
+      "signal": "AUDJPY-N2",
+      "E1": 0,
+      "E1+E2": 0,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 0,
+      "placebo mean": 0.2,
+      "placebo p95": 0.20000000000000284,
+      "E0": "NO_STRUCTURE"
+    },
+    {
+      "signal": "CADJPY-N1",
+      "E1": 0,
+      "E1+E2": 0,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 0,
+      "placebo mean": 0.0,
+      "placebo p95": 0.0,
+      "E0": "NO_STRUCTURE"
+    },
+    {
+      "signal": "GBPJPY-N1",
+      "E1": 5,
+      "E1+E2": 5,
+      "E1+E2 pre": 0,
+      "E1+E2 post": 5,
+      "placebo mean": 0.0,
+      "placebo p95": 0.0,
+      "E0": "STRUCTURE_FOUND"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "N-UJ-3/post1",
+      "signal": "N-UJ-3",
+      "zone": "post",
+      "start": 95,
+      "end": 110,
+      "minutes": 15,
+      "from": "NY 16:55",
+      "to": "17:10",
+      "rel": "exit+35 -> exit+50 min",
+      "sign": -1,
+      "diff_bps": -1.1632,
+      "winners_bps": -1.3613,
+      "losers_bps": -0.1981,
+      "t": -6.5659,
+      "q": 0.0,
+      "years_same_sign": 6
+    },
+    {
+      "id": "N-EJ-1/post1",
+      "signal": "N-EJ-1",
+      "zone": "post",
+      "start": 120,
+      "end": 135,
+      "minutes": 15,
+      "from": "NY 16:55",
+      "to": "17:10",
+      "rel": "exit+0 -> exit+15 min",
+      "sign": -1,
+      "diff_bps": -1.261,
+      "winners_bps": -1.3959,
+      "losers_bps": -0.1349,
+      "t": -6.7305,
+      "q": 0.0,
+      "years_same_sign": 6
+    },
+    {
+      "id": "AUDJPY-N1/post1",
+      "signal": "AUDJPY-N1",
+      "zone": "post",
+      "start": 240,
+      "end": 255,
+      "minutes": 15,
+      "from": "NY 16:55",
+      "to": "17:10",
+      "rel": "exit+0 -> exit+15 min",
+      "sign": -1,
+      "diff_bps": -1.3427,
+      "winners_bps": -1.8932,
+      "losers_bps": -0.5505,
+      "t": -4.8549,
+      "q": 0.0033,
+      "years_same_sign": 5
+    },
+    {
+      "id": "GBPJPY-N1/post1",
+      "signal": "GBPJPY-N1",
+      "zone": "post",
+      "start": 240,
+      "end": 255,
+      "minutes": 15,
+      "from": "NY 16:55",
+      "to": "17:10",
+      "rel": "exit+0 -> exit+15 min",
+      "sign": -1,
+      "diff_bps": -2.1163,
+      "winners_bps": -1.9846,
+      "losers_bps": 0.1318,
+      "t": -7.6627,
+      "q": 0.0,
+      "years_same_sign": 6
+    }
+  ],
+  "measures": [
+    {
+      "id": "N-UJ-3/post1",
+      "rule": "follow-on trade after exit",
+      "net pips (rule)": -2.3186,
+      "t (rule)": -17.1627,
+      "after winners": -1.3413,
+      "after losers": -3.5671,
+      "trades": 1239
+    },
+    {
+      "id": "N-EJ-1/post1",
+      "rule": "follow-on trade after exit",
+      "net pips (rule)": -4.4855,
+      "t (rule)": -27.9911,
+      "after winners": -3.6287,
+      "after losers": -5.7,
+      "trades": 1245
+    },
+    {
+      "id": "AUDJPY-N1/post1",
+      "rule": "follow-on trade after exit",
+      "net pips (rule)": -4.271,
+      "t (rule)": -30.3592,
+      "after winners": -3.4303,
+      "after losers": -5.5364,
+      "trades": 1245
+    },
+    {
+      "id": "GBPJPY-N1/post1",
+      "rule": "follow-on trade after exit",
+      "net pips (rule)": -7.451,
+      "t (rule)": -29.4329,
+      "after winners": -6.288,
+      "after losers": -9.1294,
+      "trades": 1246
+    }
+  ],
+  "holdout_2026": [
+    {
+      "id": "AUDJPY-N1/post1",
+      "2020-25 diff bps": -1.3427,
+      "2026 diff bps": -3.3259,
+      "2026 t": -4.5037,
+      "same sign": true,
+      "2026 net pips (rule)": -5.7911,
+      "2026 t (rule)": -13.2766,
+      "2026 net pips (always)": NaN,
+      "holds": false
+    },
+    {
+      "id": "GBPJPY-N1/post1",
+      "2020-25 diff bps": -2.1163,
+      "2026 diff bps": -1.5687,
+      "2026 t": -3.1658,
+      "same sign": true,
+      "2026 net pips (rule)": -10.3859,
+      "2026 t (rule)": -17.8757,
+      "2026 net pips (always)": NaN,
+      "holds": false
+    },
+    {
+      "id": "N-EJ-1/post1",
+      "2020-25 diff bps": -1.261,
+      "2026 diff bps": -1.7485,
+      "2026 t": -4.6063,
+      "same sign": true,
+      "2026 net pips (rule)": -6.3956,
+      "2026 t (rule)": -14.9959,
+      "2026 net pips (always)": NaN,
+      "holds": false
+    },
+    {
+      "id": "N-UJ-3/post1",
+      "2020-25 diff bps": -1.1632,
+      "2026 diff bps": -1.5654,
+      "2026 t": -4.2597,
+      "same sign": true,
+      "2026 net pips (rule)": -2.7183,
+      "2026 t (rule)": -8.4511,
+      "2026 net pips (always)": NaN,
+      "holds": false
+    }
+  ]
+}
