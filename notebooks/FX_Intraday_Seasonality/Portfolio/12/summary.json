@@ -3,49 +3,9 @@
   "prereg": "discussions/FX_Intraday_Seasonality/007_claude_fxs12_range_fade_preregistration.md",
   "synthetic": false,
   "n_tests": 576,
-  "discovery_pass": 2,
-  "candidates": [
-    {
-      "pair": "EURUSD",
-      "hour": 23,
-      "time": "NY 16:00",
-      "D": 20,
-      "S": 40,
-      "fills": 23,
-      "mean net": 6.5594,
-      "t": 2.3806,
-      "p": 0.0173,
-      "tp rate": 0.2609,
-      "stop rate": 0.0,
-      "time rate": 0.7391,
-      "median spread": 0.36,
-      "years same sign": 3,
-      "rw tp rate": 0.6607,
-      "q": 0.0262,
-      "tp share of resolved": 1.0,
-      "tp excess": 0.3393
-    }
-  ],
-  "confirmation": [
-    {
-      "pair": "EURUSD",
-      "time": "NY 16:00",
-      "D": 20,
-      "S": 40,
-      "disc mean": 6.5594,
-      "disc t": 2.3806,
-      "conf fills": 11,
-      "conf mean": -12.0108,
-      "conf t": -3.2423,
-      "conf tp rate": 0.0,
-      "conf stop rate": 0.0909,
-      "rw tp rate": 0.6607,
-      "p one-sided": 0.9994,
-      "q": 0.9994,
-      "CONFIRMED": false,
-      "conf mean (strict fills)": -12.011
-    }
-  ],
+  "discovery_pass": 0,
+  "candidates": [],
+  "confirmation": [],
   "frozen_sha256": "70d8c7a808925c1f6148a3aa592c2aac9300ce2a501aa548d1a9fb11912c1c1a",
   "holdout_2026": [],
   "all_tests_mean_net": {
