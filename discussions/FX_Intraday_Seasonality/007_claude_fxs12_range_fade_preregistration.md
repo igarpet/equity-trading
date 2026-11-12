@@ -65,3 +65,7 @@ The strict-fill mean is reported.
 - share of trades stopped.
 
 A strategy with frequent small wins and rare stops must show its stop rate next to its mean.
+
+## Amendment (2026-11-12, after the first run)
+
+The discovery p-value in §4 was two-sided. With costs, almost every configuration loses money significantly, so those losers filled the top BH ranks and let two weak positives through: EURUSD 16:00 NY, D20, with 23 fills and q 0.026. The discovery test is now **one-sided (mean > 0)**. Under it, nothing passes discovery (the best one-sided p is 0.009 out of 576 tests). The two configurations that passed under the flawed test also failed confirmation (−12.0 pips over 11 fills), so the conclusion is the same either way.
