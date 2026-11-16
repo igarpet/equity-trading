@@ -51,3 +51,5 @@ python tools/dukascopy/dukascopy_bond_candles.py --start 2017-12-29 --end 2025-1
 - Feed codes are assumed; a wrong code shows as every day logged "missing" in `_gaps.csv` and no files.
 - Days before a symbol's history starts are also logged as gaps; that is expected.
 - These are CFDs following the front futures contract: prices jump at quarterly rolls, the spread is Dukascopy's, volume is not exchange volume.
+
+**Request timeout (2026-11-16).** `dukascopy_candles.py` (and the bond wrapper) now wait `--timeout 10` seconds for a reply instead of 30 before retrying, and the progress line reports the time per answered request and per exception separately. `--timeout 30` restores the old behaviour.

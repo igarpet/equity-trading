@@ -52,7 +52,9 @@ REC = np.dtype([("t", ">u4"), ("o", ">u4"), ("c", ">u4"), ("l", ">u4"), ("h", ">
 STOP = threading.Event()
 _local = threading.local()
 _stats_lock = threading.Lock()
-STATS = {"requests": 0, "seconds": 0.0, "200": 0, "404": 0, "429": 0, "5xx": 0, "other": 0, "exception": 0}
+STATS = {"requests": 0, "seconds": 0.0, "200": 0, "404": 0, "429": 0, "5xx": 0, "other": 0, "exception": 0,
+         "exception_seconds": 0.0}
+TIMEOUT = [5.0, 10.0]      # connect, read (seconds); read is set by --timeout
 
 
 def _record(key: str, seconds: float) -> None:
@@ -60,6 +62,8 @@ def _record(key: str, seconds: float) -> None:
         STATS["requests"] += 1
         STATS["seconds"] += seconds
         STATS[key] += 1
+        if key == "exception":
+            STATS["exception_seconds"] += seconds
 
 
 def stats_line(elapsed: float) -> str:
@@ -67,8 +71,12 @@ def stats_line(elapsed: float) -> str:
         s = dict(STATS)
     rate = s["requests"] / elapsed if elapsed > 0 else 0.0
     lat = s["seconds"] / s["requests"] if s["requests"] else 0.0
+    answered = s["requests"] - s["exception"]
+    lat_ok = (s["seconds"] - s["exception_seconds"]) / answered if answered else 0.0
+    lat_exc = s["exception_seconds"] / s["exception"] if s["exception"] else 0.0
     return (f"{rate:.2f} req/s, {lat:.2f} s/request | http 200:{s['200']} 404:{s['404']} 429:{s['429']} "
-            f"5xx:{s['5xx']} other:{s['other']} exceptions:{s['exception']}")
+            f"5xx:{s['5xx']} other:{s['other']} exceptions:{s['exception']} | "
+            f"answered {lat_ok:.2f} s each, exceptions {lat_exc:.2f} s each")
 
 
 class FormatError(RuntimeError):
@@ -96,7 +104,7 @@ def fetch(sym: str, day: dt.date, side: str, retries: int) -> tuple[str, np.ndar
             return "error", None
         t0 = time.time()
         try:
-            r = session().get(url, timeout=30)
+            r = session().get(url, timeout=tuple(TIMEOUT))
         except requests.RequestException:
             _record("exception", time.time() - t0)
             if STOP.wait(min(2 ** attempt, 30)):
@@ -224,7 +232,7 @@ def run_symbol(sym: str, days: list[dt.date], out: Path, workers: int, retries: 
     t0, i, live_min = time.time(), 0, 0
     with _stats_lock:
         for k in STATS:
-            STATS[k] = 0.0 if k == "seconds" else 0
+            STATS[k] = 0.0 if k.endswith("seconds") else 0
     interrupted = False
     print(f"{sym}: {len(days)} days -> {root}", flush=True)
     ex = ThreadPoolExecutor(workers)
@@ -297,9 +305,12 @@ def main() -> int:
     p.add_argument("--out", default=os.environ.get("DUKASCOPY_DIR", r"D:\MarketData\Dukascopy"))
     p.add_argument("--workers", type=int, default=8, help="parallel requests (days in flight x 2 sides)")
     p.add_argument("--retries", type=int, default=6)
+    p.add_argument("--timeout", type=float, default=10.0,
+                   help="seconds to wait for a reply before retrying (was 30 before 2026-11-16)")
     p.add_argument("--passes", type=int, default=3, help="extra passes over days that hit network errors")
     p.add_argument("--pause", type=int, default=60, help="seconds to wait before an extra pass")
     a = p.parse_args()
+    TIMEOUT[1] = a.timeout
     syms = PRESETS.get(a.symbols.lower()) or tuple(s.strip().upper() for s in a.symbols.split(","))
     if a.end < a.start:
         sys.exit("--end before --start")
