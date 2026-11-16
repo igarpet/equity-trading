@@ -35,3 +35,19 @@ python tools/dukascopy/dukascopy_candles.py --symbols all --start 2015-12-30 --e
 - The record layout `(seconds, open, close, low, high, volume)` is checked on every file (whole-minute times, high/low consistent with open/close, open and close not swapped). A failed check stops the run with a message: report it.
 - `--symbols all | majors | crosses | EURUSD,GBPUSD,...`. Resumable; Ctrl+C stops cleanly. Missing sides are logged in `_gaps.csv`.
 - Keep `--workers 8` and one process: in a test (2026-11-08) 16 parallel requests drew 151 HTTP 5xx replies out of 205 and fetched fewer days than 8. Days that hit errors are retried automatically (`--passes 3`, `--pause 60`).
+
+## Bond CFDs (1-minute candles)
+
+`dukascopy_bond_candles.py` wraps `dukascopy_candles.py` for the three government-bond CFDs: `USTBONDTRUSD` (US T-Bond), `BUNDTREUR` (Euro Bund), `UKGILTTRGBP` (UK Long Gilt). Same output layout and columns as the FX pairs.
+
+```
+# test one month first
+python tools/dukascopy/dukascopy_bond_candles.py --start 2024-01-01 --end 2024-01-31
+# full history, 2026 sealed
+python tools/dukascopy/dukascopy_bond_candles.py --start 2017-12-29 --end 2025-12-31 --workers 8
+```
+
+- Prices are scaled by /1000 (assumed, not yet confirmed against the feed). After the run the median bid of the newest file is printed per symbol; a value outside 50-250 means the scaling is wrong.
+- Feed codes are assumed; a wrong code shows as every day logged "missing" in `_gaps.csv` and no files.
+- Days before a symbol's history starts are also logged as gaps; that is expected.
+- These are CFDs following the front futures contract: prices jump at quarterly rolls, the spread is Dukascopy's, volume is not exchange volume.
