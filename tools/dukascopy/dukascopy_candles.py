@@ -54,7 +54,7 @@ _local = threading.local()
 _stats_lock = threading.Lock()
 STATS = {"requests": 0, "seconds": 0.0, "200": 0, "404": 0, "429": 0, "5xx": 0, "other": 0, "exception": 0,
          "exception_seconds": 0.0}
-TIMEOUT = [5.0, 10.0]      # connect, read (seconds); read is set by --timeout
+TIMEOUT = [10.0, 30.0]     # connect, read (seconds); read is set by --timeout
 
 
 def _record(key: str, seconds: float) -> None:
@@ -305,8 +305,8 @@ def main() -> int:
     p.add_argument("--out", default=os.environ.get("DUKASCOPY_DIR", r"D:\MarketData\Dukascopy"))
     p.add_argument("--workers", type=int, default=8, help="parallel requests (days in flight x 2 sides)")
     p.add_argument("--retries", type=int, default=6)
-    p.add_argument("--timeout", type=float, default=10.0,
-                   help="seconds to wait for a reply before retrying (was 30 before 2026-11-16)")
+    p.add_argument("--timeout", type=float, default=30.0,
+                   help="seconds to wait for a reply before retrying (10 on 2026-11-16 made a long run fail)")
     p.add_argument("--passes", type=int, default=3, help="extra passes over days that hit network errors")
     p.add_argument("--pause", type=int, default=60, help="seconds to wait before an extra pass")
     a = p.parse_args()
