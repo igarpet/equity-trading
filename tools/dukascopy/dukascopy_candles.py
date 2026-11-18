@@ -305,6 +305,9 @@ def main() -> int:
     p.add_argument("--out", default=os.environ.get("DUKASCOPY_DIR", r"D:\MarketData\Dukascopy"))
     p.add_argument("--workers", type=int, default=8, help="parallel requests (days in flight x 2 sides)")
     p.add_argument("--retries", type=int, default=6)
+    p.add_argument("--skip-sundays", action="store_true",
+                   help="also skip Sundays (UTC); Saturdays are always skipped. Sunday files hold only the "
+                        "Sunday-evening open, so FX studies on the New York clock need them")
     p.add_argument("--timeout", type=float, default=30.0,
                    help="seconds to wait for a reply before retrying (10 on 2026-11-16 made a long run fail)")
     p.add_argument("--passes", type=int, default=3, help="extra passes over days that hit network errors")
@@ -315,7 +318,7 @@ def main() -> int:
     if a.end < a.start:
         sys.exit("--end before --start")
     days = [a.start + dt.timedelta(n) for n in range((a.end - a.start).days + 1)]
-    days = [d for d in days if d.weekday() != 5]
+    days = [d for d in days if d.weekday() != 5 and not (a.skip_sundays and d.weekday() == 6)]
     print(f"symbols: {', '.join(syms)} | {a.start} -> {a.end} | Ctrl+C stops cleanly; rerun resumes.")
     left = {}
     for sym in syms:

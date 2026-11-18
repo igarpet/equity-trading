@@ -50,6 +50,7 @@ python tools/dukascopy/dukascopy_bond_candles.py --start 2017-12-29 --end 2025-1
 - Prices are scaled by /1000 (assumed, not yet confirmed against the feed). After the run the median bid of the newest file is printed per symbol; a value outside 50-250 means the scaling is wrong.
 - Feed codes are assumed; a wrong code shows as every day logged "missing" in `_gaps.csv` and no files.
 - Days before a symbol's history starts are also logged as gaps; that is expected.
+- Weekends are skipped by default (Saturday and Sunday, UTC); `--include-sundays` fetches Sundays too. The FX downloader still fetches Sundays unless given `--skip-sundays`, because the New York-clock FX day starts on Sunday evening.
 - These are CFDs following the front futures contract: prices jump at quarterly rolls, the spread is Dukascopy's, volume is not exchange volume.
 
 **Request timeout.** Default `--timeout 30` seconds. A 10-second timeout (2026-11-16) made a 5-hour bond run fail on most days and was reverted on 2026-11-17. The progress line reports the time per answered request and per exception separately.

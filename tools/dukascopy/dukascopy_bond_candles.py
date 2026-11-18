@@ -14,6 +14,9 @@ Symbols (Dukascopy feed codes):
   BUNDTREUR     Euro Bund CFD      (BUND.TR/EUR)
   UKGILTTRGBP   UK Long Gilt CFD   (UKGILT.TR/GBP)
 
+Weekends: Saturdays and Sundays (UTC) are skipped by default. Pass --include-sundays to also fetch
+Sundays (only the Sunday-evening open, if Dukascopy quotes it). Sunday files already on disk are kept.
+
 Only two things differ from FX:
   - price scaling: integers / 1000 (assumed; FX uses 100000, JPY pairs 1000);
   - after the run, the median bid of the newest file is printed per symbol and checked against a
@@ -84,7 +87,12 @@ def main() -> int:
     pre = argparse.ArgumentParser(add_help=False)
     pre.add_argument("--symbols", default=None)
     pre.add_argument("--out", default=os.environ.get("DUKASCOPY_DIR", r"D:\MarketData\Dukascopy"))
+    pre.add_argument("--include-sundays", action="store_true")
     known, _ = pre.parse_known_args()
+    if known.include_sundays:
+        sys.argv.remove("--include-sundays")
+    elif "--skip-sundays" not in sys.argv:
+        sys.argv.append("--skip-sundays")
     if known.symbols is None:
         sys.argv += ["--symbols", "bonds"]
         syms = BONDS
