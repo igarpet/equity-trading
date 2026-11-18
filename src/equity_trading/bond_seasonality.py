@@ -41,11 +41,14 @@ import pandas as pd
 
 from . import fx_seasonality as F
 
-BDS_VERSION = "0.1.0"
+BDS_VERSION = "0.2.0"   # 0.2.0: switch detection by Dukascopy's adjustment-break signature, 1-minute spike screen (BDS 002)
 SYMBOLS = {
-    "USTBONDTRUSD": {"short": "UST", "name": "US T-Bond", "tick": 1 / 32, "future": "ZB (CBOT T-Bond)"},
-    "BUNDTREUR": {"short": "BUND", "name": "Euro Bund", "tick": 0.01, "future": "FGBL (Eurex Bund)"},
-    "UKGILTTRGBP": {"short": "GILT", "name": "UK Long Gilt", "tick": 0.01, "future": "Long Gilt (ICE)"},
+    "USTBONDTRUSD": {"short": "UST", "name": "US T-Bond", "tick": 1 / 32, "future": "ZB (CBOT T-Bond)",
+                     "tz": "America/New_York", "close": 17 * 60},
+    "BUNDTREUR": {"short": "BUND", "name": "Euro Bund", "tick": 0.01, "future": "FGBL (Eurex Bund)",
+                  "tz": "Europe/Berlin", "close": 22 * 60},
+    "UKGILTTRGBP": {"short": "GILT", "name": "UK Long Gilt", "tick": 0.01, "future": "Long Gilt (ICE)",
+                    "tz": "Europe/London", "close": 18 * 60},
 }
 WINDOWS = {"H1": (dt.date(2018, 1, 1), dt.date(2021, 12, 31)),
            "H2": (dt.date(2022, 1, 1), dt.date(2025, 12, 31)),
@@ -77,6 +80,13 @@ class BDSConfig:
     seed: int = 42
     break_minutes: int = 30            # a gap of at least this many unquoted minutes is a break
     roll_extra_ratio: float = 8.0      # other breaks in a roll window this many times the median gap are also dropped
+    switch_rule: str = "signature"     # "signature" (BDS 002) or "largest" (BDS 001)
+    early_stop: tuple = (15, 25)       # signature A: last quote 15-25 min before the regular close (Dukascopy stops 20 min early)
+    midday_break: tuple = (45, 90)     # signature B: an in-session break of 45-90 min (adjustment break used in 2018-2019)
+    spike_abs_bps: float = 100.0       # a 1-minute mid move at least this large flags the day
+    spike_revert_bps: float = 50.0     # ... or a move at least this large
+    spike_revert_share: float = 0.8    # ... reversed by at least this share
+    spike_revert_minutes: int = 5      # ... within this many quoted minutes
     trim: float = 0.01                 # trimmed-mean robustness check (each tail)
 
     def fx(self, **kw) -> F.FXSConfig:
@@ -108,6 +118,7 @@ class BondData:
     minutes: pd.DataFrame
     files: dict                # expected / present / missing / share / sunday_session
     rolls: pd.DataFrame
+    spikes: pd.DataFrame       # flagged 1-minute moves (screen_spikes)
     panels: dict               # clock -> Panel (after all drops)
     drops: pd.DataFrame        # per clock: days built, dropped by reason, kept
 
@@ -129,13 +140,38 @@ def break_gaps(minutes: pd.DataFrame, break_minutes: int) -> pd.DataFrame:
                          "gap_bps": (mid[i] - mid[i - 1]) * 1e4})
 
 
-def detect_rolls(minutes: pd.DataFrame, start: dt.date, end: dt.date, cfg: BDSConfig) -> pd.DataFrame:
-    """One contract switch per quarter: the break with the largest |gap| between the 10th of the month before
-    a quarterly expiry month and the end of that month. Other breaks in the same window larger than both
-    half that gap and `roll_extra_ratio` x the median |gap| are also dropped (flag `extra`)."""
+def _signature(br: pd.DataFrame, symbol: str, cfg: BDSConfig) -> pd.Series:
+    """Which breaks look like a Dukascopy CFD adjustment break:
+    A ``early_stop``: the last quote before the break is 15-25 minutes before the regular close (local exchange
+      time), because on the adjustment day CFD trading stops 20 minutes early;
+    B ``midday``: a 45-90 minute break that starts and ends during the session (the adjustment break seen in
+      2018-2019). Returns "early_stop", "midday" or "" per break."""
+    info = SYMBOLS[symbol]
+    loc = br["before"].dt.tz_convert(info["tz"])
+    mod = loc.dt.hour * 60 + loc.dt.minute
+    lead = info["close"] - 1 - mod                      # minutes between the last quote and the close's last minute
+    a = (lead >= cfg.early_stop[0] - 1) & (lead <= cfg.early_stop[1])
+    after = br["after"].dt.tz_convert(info["tz"])
+    mod_a = after.dt.hour * 60 + after.dt.minute
+    b = (br["minutes"] >= cfg.midday_break[0]) & (br["minutes"] <= cfg.midday_break[1]) & \
+        (mod >= 6 * 60) & (mod_a <= info["close"] - 60) & (loc.dt.date == after.dt.date)
+    return pd.Series(np.where(a, "early_stop", np.where(b, "midday", "")), index=br.index)
+
+
+def detect_rolls(minutes: pd.DataFrame, start: dt.date, end: dt.date, cfg: BDSConfig, symbol: str | None = None) -> pd.DataFrame:
+    """One contract switch per quarter, looked for between the 10th of the month before a quarterly expiry month
+    and the end of that month.
+
+    ``switch_rule="signature"`` (BDS 002): the break with the largest |gap| among breaks with an adjustment-break
+    signature (see ``_signature``); if the window has none, the largest |gap| of all its breaks (``method``
+    "fallback"). ``switch_rule="largest"`` (BDS 001): always the largest |gap|.
+    Other breaks in the window larger than both half the chosen gap and `roll_extra_ratio` x the median |gap|
+    are also dropped (``extra``)."""
     br = break_gaps(minutes, cfg.break_minutes)
     if br.empty:
-        return br.assign(quarter=[], ratio=[], extra=[])
+        return br.assign(quarter=[], ratio=[], extra=[], method=[])
+    use_sig = cfg.switch_rule == "signature" and symbol is not None
+    br["signature"] = _signature(br, symbol, cfg) if use_sig else ""
     med = float(br["gap_bps"].abs().median()) or 1e-9
     rows = []
     for y in range(start.year, end.year + 1):
@@ -145,15 +181,46 @@ def detect_rolls(minutes: pd.DataFrame, start: dt.date, end: dt.date, cfg: BDSCo
             w = br[(br["after"] >= a) & (br["after"] < b) & (br["after"].dt.date >= start) & (br["after"].dt.date <= end)]
             if w.empty:
                 continue
-            top = w["gap_bps"].abs().idxmax()
+            sig = w[w["signature"] != ""]
+            pool = sig if use_sig and len(sig) else w
+            method = ("signature" if len(sig) else "fallback") if use_sig else "largest"
+            top = pool["gap_bps"].abs().idxmax()
             big = float(abs(w.loc[top, "gap_bps"]))
             for ix, r in w.iterrows():
                 g = abs(r["gap_bps"])
                 if ix == top or (g >= 0.5 * big and g >= cfg.roll_extra_ratio * med):
                     rows.append({"quarter": f"{y}-{m:02d}", "before": r["before"], "after": r["after"],
                                  "break_minutes": int(r["minutes"]), "gap_bps": float(r["gap_bps"]),
-                                 "ratio": g / med, "extra": ix != top})
+                                 "ratio": g / med, "extra": ix != top, "method": method if ix == top else "extra",
+                                 "signature": r["signature"]})
     return pd.DataFrame(rows)
+
+
+def screen_spikes(minutes: pd.DataFrame, cfg: BDSConfig) -> pd.DataFrame:
+    """1-minute mid moves between consecutive quoted minutes (within a session, not across a break) that are
+    either at least `spike_abs_bps`, or at least `spike_revert_bps` and reversed by `spike_revert_share` within
+    `spike_revert_minutes` quoted minutes. Each row is a flagged minute; its days are dropped."""
+    q = minutes[minutes["tick"]]
+    ts = q.index
+    lm = np.log(0.5 * (q["bid"].to_numpy() + q["ask"].to_numpy()))
+    if len(lm) < 3:
+        return pd.DataFrame(columns=["ts", "move_bps", "reverted_bps", "kind"])
+    gap = np.diff(ts.to_numpy()).astype("timedelta64[m]").astype(np.int64)
+    r = np.diff(lm) * 1e4
+    r[gap >= cfg.break_minutes] = 0.0                    # moves across breaks are not 1-minute moves
+    k = cfg.spike_revert_minutes
+    cum = np.concatenate([[0.0], np.cumsum(r)])
+    rows = []
+    for i in np.flatnonzero(np.abs(r) >= min(cfg.spike_abs_bps, cfg.spike_revert_bps)):
+        j = min(len(r), i + 1 + k)
+        after = cum[j] - cum[i + 1]                         # move over the next k quoted minutes
+        reverted = -after * np.sign(r[i])
+        kind = "large" if abs(r[i]) >= cfg.spike_abs_bps else ""
+        if reverted >= cfg.spike_revert_share * abs(r[i]):
+            kind = "spike" if not kind else "large+spike"
+        if kind:
+            rows.append({"ts": ts[i + 1], "move_bps": float(r[i]), "reverted_bps": float(reverted), "kind": kind})
+    return pd.DataFrame(rows, columns=["ts", "move_bps", "reverted_bps", "kind"])
 
 
 def _subset(p: F.Panel, keep: np.ndarray) -> F.Panel:
@@ -182,7 +249,12 @@ def load(symbol: str, window: str, cfg: BDSConfig, drop_rolls: bool = True) -> B
           "present_weekdays": sum(d in present for d in weekdays),
           "share": sum(d in present for d in weekdays) / len(weekdays), "sunday_session": sunday_session,
           "missing": missing}
-    rolls = detect_rolls(minutes, first, end, cfg)
+    rolls = detect_rolls(minutes, first, end, cfg, symbol)
+    spikes = screen_spikes(minutes, cfg)
+    spike_lab = {c: set() for c in CLOCKS}
+    for t in spikes["ts"]:
+        for c, lab in _labels(t).items():
+            spike_lab[c].add(lab)
     roll_lab = {c: set() for c in CLOCKS}
     if drop_rolls:
         for _, r in rolls.iterrows():
@@ -199,12 +271,13 @@ def load(symbol: str, window: str, cfg: BDSConfig, drop_rolls: bool = True) -> B
             m_missing |= np.isin(s, list(miss)) if miss else False
         m_cov = p.coverage < cfg.rel_coverage * float(np.median(p.coverage))
         m_roll = np.isin(p.dates, list(roll_lab[c])) if roll_lab[c] else np.zeros(len(p.dates), bool)
-        keep = ~(m_missing | m_cov | m_roll)
+        m_spike = np.isin(p.dates, list(spike_lab[c])) if spike_lab[c] else np.zeros(len(p.dates), bool)
+        keep = ~(m_missing | m_cov | m_roll | m_spike)
         panels[c] = _subset(p, keep)
         drops.append({"clock": c, "days built": len(p.dates), "missing file": int(m_missing.sum()),
                       "low coverage": int((m_cov & ~m_missing).sum()), "contract switch": int((m_roll & ~m_missing & ~m_cov).sum()),
-                      "kept": int(keep.sum())})
-    return BondData(symbol, window, start, end, first, minutes, fs, rolls, panels, pd.DataFrame(drops))
+                      "price spike": int((m_spike & ~m_roll & ~m_missing & ~m_cov).sum()), "kept": int(keep.sum())})
+    return BondData(symbol, window, start, end, first, minutes, fs, rolls, spikes, panels, pd.DataFrame(drops))
 
 
 def counted_years(panel: F.Panel, cfg: BDSConfig) -> list[int]:
@@ -354,14 +427,21 @@ def load_frozen(folder: Path) -> tuple[pd.DataFrame, dict]:
 
 
 # ----------------------------------------------------------------------------- synthetic data
+def _local(symbol: str, ts: pd.DatetimeIndex):
+    loc = ts.tz_convert(SYMBOLS[symbol]["tz"])
+    return loc, np.asarray(loc.hour * 60 + loc.minute)
+
+
 def _open(symbol: str, ts: pd.DatetimeIndex) -> np.ndarray:
-    wd, mod = ts.weekday, ts.hour * 60 + ts.minute
-    if symbol == "USTBONDTRUSD":                 # Sunday 22:00 -> Friday 21:00 UTC, daily break 21:00-22:00
-        closed = (wd == 5) | ((wd == 6) & (mod < 22 * 60)) | ((wd == 4) & (mod >= 21 * 60)) | \
-                 ((wd < 4) & (mod >= 21 * 60) & (mod < 22 * 60))
+    """Synthetic sessions in local exchange time: UST Sunday 18:00 -> Friday 17:00 New York with a daily break
+    17:00-18:00; Bund 08:00-22:00 Frankfurt; Gilt 08:00-18:00 London (Monday-Friday)."""
+    loc, mod = _local(symbol, ts)
+    wd = np.asarray(loc.weekday)
+    if symbol == "USTBONDTRUSD":
+        closed = (wd == 5) | ((wd == 6) & (mod < 18 * 60)) | ((wd == 4) & (mod >= 17 * 60)) | \
+                 ((wd < 4) & (mod >= 17 * 60) & (mod < 18 * 60))
         return ~closed
-    lo, hi = (7 * 60, 21 * 60) if symbol == "BUNDTREUR" else (8 * 60, 17 * 60)
-    return (wd < 5) & (mod >= lo) & (mod < hi)
+    return (wd < 5) & (mod >= 8 * 60) & (mod < SYMBOLS[symbol]["close"])
 
 
 def roll_days(start: dt.date, end: dt.date) -> list[dt.date]:
@@ -379,36 +459,66 @@ def roll_days(start: dt.date, end: dt.date) -> list[dt.date]:
 
 def write_synthetic_bond(base: Path, symbol: str, start: dt.date, end: dt.date, seed: int, drift_bps: float = 0.0,
                          drift_ny_min: tuple = (510, 570), roll_bps: float = -60.0, price: float = 120.0,
-                         spread: float = 0.05, missing: int = 0) -> Path:
-    """Synthetic 1-minute bid/ask candles in the downloader layout: random-walk mid during the symbol's
-    session, a `roll_bps` jump at the reopening after each synthetic switch day, `drift_bps` per day spread
-    over [drift_ny_min) New York minutes of the day, and `missing` random weekday files removed."""
+                         spread: float = 0.05, missing: int = 0, weekend_gap_bps: float = 0.0,
+                         spikes: tuple = ()) -> Path:
+    """Synthetic 1-minute bid/ask candles in the downloader layout: random-walk mid during the symbol's session;
+    on each synthetic switch day quotes stop 20 minutes before the close (as Dukascopy does) and the mid jumps
+    `roll_bps` at the next open; `drift_bps` per day spread over [drift_ny_min) New York minutes;
+    `weekend_gap_bps` at the first open after the weekend following the 15th of each roll window's expiry month
+    (an ordinary gap larger than the switch); `spikes`: UTC timestamps where the mid jumps 300 bps for one
+    minute and comes back; `missing` random weekday files removed."""
     rng = np.random.default_rng(seed)
     root = Path(base) / symbol / "candles_m1"
     lp, pending = np.log(price), 0.0
     rolls = set(roll_days(start, end))
+    close = SYMBOLS[symbol]["close"]
+    gap_days = set()
+    for y in range(start.year, end.year + 1):
+        for m in ROLL_MONTHS:
+            d0 = dt.date(y, m, 15)
+            while d0.weekday() != 0:
+                d0 += dt.timedelta(days=1)
+            gap_days.add(d0)                              # Monday after the weekend
+    spike_ts = {pd.Timestamp(t, tz="UTC") for t in spikes}
     d = start
     while d <= end:
         if d.weekday() != 5:
             ts = pd.date_range(pd.Timestamp(d, tz="UTC"), periods=F.SLOTS, freq="1min")
             op = _open(symbol, ts)
+            loc, mod = _local(symbol, ts)
+            early = np.zeros(F.SLOTS, bool)
+            if d in rolls:
+                early = op & (mod >= close - 20) & (mod < close) & (np.asarray(loc.date) == d)
+                op = op & ~early
             quoted = op & (rng.random(F.SLOTS) < 0.9)
             r = rng.normal(0, 0.4e-4, F.SLOTS) * op
             ny = ts.tz_convert(F.NY)
-            nm = ny.hour * 60 + ny.minute
+            nm = np.asarray(ny.hour * 60 + ny.minute)
             a, b = drift_ny_min
-            r = r + np.where(op & (nm >= a) & (nm < b) & (ny.weekday < 5), drift_bps * 1e-4 / (b - a), 0.0)
-            if pending and op.any():
-                r[np.flatnonzero(op)[0]] += pending
+            r = r + np.where(op & (nm >= a) & (nm < b) & (np.asarray(ny.weekday) < 5), drift_bps * 1e-4 / (b - a), 0.0)
+            first_open = np.flatnonzero(op)
+            if pending and len(first_open):
+                r[first_open[0]] += pending
                 pending = 0.0
-            if d in rolls:
-                if symbol == "USTBONDTRUSD":
-                    r[22 * 60] += roll_bps * 1e-4          # reopening after the 21:00-22:00 UTC break
+            if weekend_gap_bps and len(first_open) and first_open[0] > 0:     # a session open inside this file
+                ld = np.asarray(loc.date)
+                if ld[first_open[0]] in gap_days or (symbol == "USTBONDTRUSD" and (ld[first_open[0]] + dt.timedelta(days=1)) in gap_days
+                                                    and np.asarray(loc.weekday)[first_open[0]] == 6):
+                    r[first_open[0]] += weekend_gap_bps * 1e-4
+            if early.any():
+                nxt = np.flatnonzero(op & (np.arange(F.SLOTS) > np.flatnonzero(early).max()))
+                if len(nxt):
+                    r[nxt[0]] += roll_bps * 1e-4
                 else:
-                    pending = roll_bps * 1e-4             # next session's first minute
+                    pending = roll_bps * 1e-4
             path = lp + np.cumsum(r)
             lp = path[-1]
             mid = np.exp(path)
+            for t in spike_ts:
+                if t.date() == d:
+                    i = int((t - ts[0]) / pd.Timedelta(minutes=1))
+                    mid[i] *= 1.03
+                    quoted[i] = quoted[i + 1] = True
             bid, ask = np.round(mid - spread / 2, 3), np.round(mid + spread / 2, 3)
             v = quoted.astype(np.float32)
             df = pd.DataFrame({"ts": ts, "bid_o": bid, "bid_h": bid, "bid_l": bid, "bid_c": bid, "bid_v": v,

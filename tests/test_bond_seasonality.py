@@ -53,8 +53,8 @@ def test_roll_jump_biases_break_interval_unless_dropped(market_dir):
     cfg = B.BDSConfig(min_year_days=100)
     mean = {}
     for drop in (False, True):
-        p = B.load("USTBONDTRUSD", "T", cfg, drop_rolls=drop).panels["UTC"]
-        mean[drop] = float(B.interval_returns(p, 21 * 60 - 15, 22 * 60 + 15, 1).mean())   # across the break
+        p = B.load("USTBONDTRUSD", "T", cfg, drop_rolls=drop).panels["NY"]
+        mean[drop] = float(B.interval_returns(p, 30, 90, 1).mean())      # 17:30 -> 18:30 New York, across the reopening
     assert mean[False] < -1.5 and abs(mean[True]) < 0.5
 
 
@@ -97,3 +97,29 @@ def test_trade_costs(market_dir):
     assert np.allclose(tr["net_bps"], tr["gross_bps"] - 0.70)
     assert np.allclose(tr["gross_pips"], -(p.mid[:, 660] - p.mid[:, 600]))
     assert (tr["cfd_net_bps"] < tr["net_bps"]).mean() > 0.95      # 0.05-point CFD spread > one 0.01 tick
+
+
+def test_signature_beats_largest_gap(market_dir):
+    """An ordinary weekend gap (+90 bp) larger than the switch (-60 bp) fools the BDS 001 rule, not the
+    adjustment-break signature (quotes stop 20 minutes before the close on the switch day)."""
+    from dataclasses import replace
+    base = market_dir / "Dukascopy"
+    for s, seed in (("USTBONDTRUSD", 1), ("BUNDTREUR", 2), ("UKGILTTRGBP", 3)):
+        B.write_synthetic_bond(base, s, D(2017, 12, 28), D(2019, 12, 31), seed=seed, weekend_gap_bps=90.0)
+        true = set(B.roll_days(D(2018, 1, 1), D(2019, 12, 31)))
+        found = {}
+        for rule in ("largest", "signature"):
+            r = B.load(s, "T", replace(B.BDSConfig(), switch_rule=rule)).rolls
+            main = r[~r["extra"]]
+            found[rule] = set(main["before"].dt.tz_convert(B.SYMBOLS[s]["tz"]).dt.date) & true
+        assert len(found["signature"]) == 8 and len(found["largest"]) == 0, (s, found)
+
+
+def test_spike_screen(market_dir):
+    base = market_dir / "Dukascopy"
+    B.write_synthetic_bond(base, "BUNDTREUR", D(2018, 12, 28), D(2019, 6, 30), seed=8, spikes=("2019-05-15 10:00",))
+    B.WINDOWS["T"] = (D(2019, 1, 1), D(2019, 6, 30))
+    bd = B.load("BUNDTREUR", "T", B.BDSConfig())
+    assert set(bd.spikes["ts"].dt.date) == {D(2019, 5, 15)}
+    assert (bd.drops["price spike"] == 1).all()
+    assert np.datetime64("2019-05-15") not in bd.panels["UTC"].dates

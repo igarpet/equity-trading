@@ -19,6 +19,8 @@ One folder per symbol, four notebooks identical across symbols except for the sy
 
 Protocol: [`001_claude_bds01_preregistration.md`](../../discussions/Bond_Intraday_Seasonality/001_claude_bds01_preregistration.md).
 
+**BDS 002 amendment (2026-11-18).** After the BDS 001 run (`6b13a49`: no candidates anywhere; Bund and Gilt at noise level; T-Bond 4 D1 survivors, all below the futures cost), contract switches are found by Dukascopy's adjustment-break signature (quotes stop 20 minutes before the close, or a 1-hour midday break in 2018–2019) instead of the largest gap, and days with an impossible 1-minute price spike are dropped. Engine 0.2.0. Only the T-Bond notebooks are regenerated for the rerun; Bund and Gilt keep their BDS 001 outputs. [`002_claude_bds02_amendment_switches_spikes.md`](../../discussions/Bond_Intraday_Seasonality/002_claude_bds02_amendment_switches_spikes.md)
+
 **Differences from FX.** Quarterly contract switches (the CFD jumps to the next future's price at the daily break) are detected and the days containing them dropped; a day counts if it has at least half the window's median quoted minutes; days spanning a missing file are dropped; costs are one futures tick + 0.70 bp (Dukascopy's CFD spread, about 0.05 points, is reported alongside); D2/K4 use the share of years with ≥ 120 days (75% / 60%).
 
 **Data.** `tools/dukascopy/dukascopy_bond_candles.py`. Discovery needs ≥ 95% of weekday files from the symbol's first file.
