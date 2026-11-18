@@ -6,7 +6,7 @@
     "2018-01-01",
     "2021-12-31"
   ],
-  "bds_version": "0.1.0",
+  "bds_version": "0.2.0",
   "synthetic": false,
   "files": {
     "first_file": "2018-01-04",
@@ -23,16 +23,18 @@
       "days built": 1030,
       "missing file": 3,
       "low coverage": 226,
-      "contract switch": 43,
-      "kept": 758
+      "contract switch": 54,
+      "price spike": 7,
+      "kept": 740
     },
     {
       "clock": "UTC",
       "days built": 1031,
       "missing file": 2,
       "low coverage": 232,
-      "contract switch": 29,
-      "kept": 768
+      "contract switch": 37,
+      "price spike": 5,
+      "kept": 755
     }
   ],
   "counted_years": 3,
@@ -97,6 +99,19 @@
     "seed": 42,
     "break_minutes": 30,
     "roll_extra_ratio": 8.0,
+    "switch_rule": "signature",
+    "early_stop": [
+      15,
+      25
+    ],
+    "midday_break": [
+      45,
+      90
+    ],
+    "spike_abs_bps": 100.0,
+    "spike_revert_bps": 50.0,
+    "spike_revert_share": 0.8,
+    "spike_revert_minutes": 5,
     "trim": 0.01
   }
 }
