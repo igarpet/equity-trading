@@ -39,7 +39,7 @@ import pandas as pd
 from . import bond_seasonality as B
 from . import fx_seasonality as F
 
-BFX_VERSION = "0.1.0"
+BFX_VERSION = "0.1.1"   # 0.1.1: zero/negative quotes treated as missing; frames drop non-finite rows
 PAIRINGS = {"EURUSD": ("BUNDTREUR", "USTBONDTRUSD"),
             "GBPUSD": ("UKGILTTRGBP", "USTBONDTRUSD"),
             "USDJPY": ("USTBONDTRUSD",),
@@ -119,11 +119,18 @@ class Leg:
     spikes: pd.DataFrame
     missing: list
     file_share: float
+    bad_quotes: int = 0         # quoted minutes with a zero / negative / non-finite price (treated as missing)
 
 
 def load_leg(symbol: str, start: dt.date, end: dt.date, cfg: BFXConfig) -> Leg:
     guard(start, end)
-    m = F.load_minutes(symbol, start, end, "confirmation")
+    m = F.load_minutes(symbol, start, end, "confirmation").copy()
+    bad = ~((m["bid"] > 0) & (m["ask"] > 0) & np.isfinite(m["bid"]) & np.isfinite(m["ask"]))
+    n_bad = int((bad & m["tick"]).sum())
+    if bad.any():                                        # a zero price is a missing quote, not a price
+        m.loc[bad, ["bid", "ask"]] = np.nan
+        m[["bid", "ask"]] = m[["bid", "ask"]].ffill()
+        m["tick"] = m["tick"] & ~bad
     is_bond = symbol in B.SYMBOLS
     spikes = B.screen_spikes(m, cfg.bds)
     rolls = B.detect_rolls(m, start, end, cfg.bds, symbol) if is_bond else pd.DataFrame()
@@ -147,7 +154,7 @@ def load_leg(symbol: str, start: dt.date, end: dt.date, cfg: BFXConfig) -> Leg:
     bars["excluded"] = pd.Series(day, index=bars.index).isin(bad).to_numpy()
     exp = sum(1 for n in range((end - start).days + 1) if (start + dt.timedelta(n)).weekday() < 5)
     share = 1 - len([d for d in missing if start <= d <= end]) / max(exp, 1)
-    return Leg(symbol, bars, rolls, spikes, missing, share)
+    return Leg(symbol, bars, rolls, spikes, missing, share, n_bad)
 
 
 @dataclass
@@ -200,7 +207,7 @@ def frame(pairing: str, window: str, cfg: BFXConfig, legs: dict | None = None) -
     d = df.index.tz_convert("UTC")
     ok &= np.asarray(d.weekday < 5) | np.asarray((d.weekday == 6))           # Sunday-evening FX/UST bars allowed
     ok &= np.asarray((d - pd.Timedelta(minutes=1)).date >= start) & np.asarray((d - pd.Timedelta(minutes=1)).date <= end)
-    v = df[ok.to_numpy()].dropna(subset=["y", "bid", "ask"] + [f"x{j}" for j in range(len(bonds))])
+    v = df[ok.to_numpy()].replace([np.inf, -np.inf], np.nan).dropna(subset=["y", "bid", "ask"] + [f"x{j}" for j in range(len(bonds))])
     t = v.index
     step = np.r_[np.inf, np.diff(t.to_numpy()).astype("timedelta64[m]").astype(np.int64)]
     seg = np.cumsum(step != cfg.bar_minutes)
@@ -210,6 +217,23 @@ def frame(pairing: str, window: str, cfg: BFXConfig, legs: dict | None = None) -
     M = v[[f"m{j}" for j in range(len(bonds))]].to_numpy()
     return PairFrame(pairing, bonds, window, t, v["y"].to_numpy(), v["bid"].to_numpy(), v["ask"].to_numpy(),
                      X, M, seg, day, {s: legs[s] for s in (pairing, *bonds)}, bpd)
+
+
+def monthly_diagnostics(fr: PairFrame) -> pd.DataFrame:
+    """Per month: valid bars, days, bars with a usable 5-minute return (previous bar 5 minutes earlier), and the
+    share of those returns where each bond did not move (stale prices marked as quoted show up here)."""
+    ry, rX = fr.returns()
+    ok = np.isfinite(ry) & np.isfinite(rX).all(axis=1)
+    mon = pd.PeriodIndex(pd.DatetimeIndex(fr.day.astype("datetime64[ns]")), freq="M")
+    df = pd.DataFrame({"month": mon, "day": fr.day, "ret": ok})
+    for j, b in enumerate(fr.bonds):
+        df[f"{BOND_SHORT[b]} zero"] = np.where(ok, rX[:, j] == 0, np.nan)
+    df["FX zero"] = np.where(ok, ry == 0, np.nan)
+    g = df.groupby("month")
+    out = pd.DataFrame({"bars": g.size(), "days": g["day"].nunique(), "returns": g["ret"].sum()})
+    for c in [c for c in df.columns if c.endswith(" zero")]:
+        out[f"share {c}"] = g[c].mean()
+    return out
 
 
 def coverage_table(fr: PairFrame) -> pd.DataFrame:
