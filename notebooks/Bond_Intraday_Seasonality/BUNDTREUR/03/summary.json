@@ -1,0 +1,13 @@
+{
+  "study": "BDS01-cross",
+  "symbol": "BUNDTREUR",
+  "bds_version": "0.1.0",
+  "synthetic": false,
+  "frozen": {
+    "H1": 0,
+    "H2": 0
+  },
+  "found_in_both": [],
+  "confirmed": [],
+  "results": []
+}

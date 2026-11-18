@@ -1,0 +1,102 @@
+{
+  "study": "BDS01",
+  "symbol": "BUNDTREUR",
+  "window": "FULL",
+  "dates": [
+    "2018-01-01",
+    "2025-12-31"
+  ],
+  "bds_version": "0.1.0",
+  "synthetic": false,
+  "files": {
+    "first_file": "2018-01-01",
+    "expected_weekdays": 2088,
+    "present_weekdays": 2088,
+    "share": 1.0,
+    "sunday_session": false
+  },
+  "missing_files": 0,
+  "contract_switches": 31,
+  "drops": [
+    {
+      "clock": "NY",
+      "days built": 2086,
+      "missing file": 0,
+      "low coverage": 149,
+      "contract switch": 65,
+      "kept": 1872
+    },
+    {
+      "clock": "UTC",
+      "days built": 2086,
+      "missing file": 0,
+      "low coverage": 149,
+      "contract switch": 65,
+      "kept": 1872
+    }
+  ],
+  "counted_years": 8,
+  "d2_needed": 6,
+  "tests": 1877,
+  "D1": 0,
+  "D1_D2": 0,
+  "D1_D2_D3": 0,
+  "D1_D2_D3_cfd": 0,
+  "candidates": 0,
+  "pooled_bonferroni_candidates": 0,
+  "placebo_D1_D2_D3": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "D0": "NO_STRUCTURE",
+  "candidates_sha256": "7354c3c9758f95d38aefe5ce40a2504436080d2f2b40b357513993f20d0fd522",
+  "config": {
+    "durations": [
+      15,
+      30,
+      60,
+      120,
+      240
+    ],
+    "start_step": 5,
+    "rel_coverage": 0.5,
+    "min_file_share": 0.95,
+    "min_year_days": 120,
+    "year_share_d2": 0.75,
+    "year_share_k4": 0.6,
+    "nw_lags": 5,
+    "fdr_q": 0.05,
+    "commission_bps_rt": 0.7,
+    "max_candidates": 10,
+    "n_placebo": 20,
+    "conf_fdr_q": 0.05,
+    "alpha": 0.025,
+    "blocks": [
+      10,
+      20
+    ],
+    "n_boot": 10000,
+    "seed": 42,
+    "break_minutes": 30,
+    "roll_extra_ratio": 8.0,
+    "trim": 0.01
+  }
+}
