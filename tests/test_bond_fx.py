@@ -93,3 +93,11 @@ def test_placebo_separates_bond_link(market, method, expected):
     d0 = X.d0_table(res, X.placebo(method, frames, cfg, "T")).set_index("pairing")
     assert d0.loc[expected, "E4"]
     assert d0.loc["EURGBP", "E1_E2_E3"] == 0
+
+
+def test_windows_resplit_2020():
+    from equity_trading import bond_seasonality as B
+    assert X.WINDOWS["H1"] == (D(2020, 1, 1), D(2022, 12, 31))
+    assert X.WINDOWS["H2"] == (D(2023, 1, 1), D(2025, 12, 31))
+    assert X.WINDOWS["FULL"] == (D(2020, 1, 1), D(2025, 12, 31))
+    assert X.WINDOWS is not B.WINDOWS and B.WINDOWS["H1"][0] == D(2018, 1, 1)   # the bond study keeps its windows

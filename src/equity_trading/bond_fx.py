@@ -11,7 +11,8 @@ USDJPY     US T-Bond                        US yields (no JGB CFD available)
 EURGBP     Bund, Gilt                       EUR-GBP long-rate differential
 =========  ===============================  ==========================================
 
-Three methods, each tested on the same data and windows as BDS 001 (H1 2018-2021, H2 2022-2025, FULL):
+Three methods, each tested on H1 2020-2022, H2 2023-2025 and FULL 2020-2025 (BFX 002: the bond quotes are
+missing or stale before 2020):
 
 * ``leadlag``  bonds move first: after a large bond-implied FX move over the last L bars, hold the FX pair
   in that direction for H bars. FX leg only.
@@ -39,12 +40,14 @@ import pandas as pd
 from . import bond_seasonality as B
 from . import fx_seasonality as F
 
-BFX_VERSION = "0.1.1"   # 0.1.1: zero/negative quotes treated as missing; frames drop non-finite rows
+BFX_VERSION = "0.2.0"   # 0.2.0: windows re-split on 2020-2025 (BFX 002); 0.1.1: zero/negative quotes treated as missing
 PAIRINGS = {"EURUSD": ("BUNDTREUR", "USTBONDTRUSD"),
             "GBPUSD": ("UKGILTTRGBP", "USTBONDTRUSD"),
             "USDJPY": ("USTBONDTRUSD",),
             "EURGBP": ("BUNDTREUR", "UKGILTTRGBP")}
-WINDOWS = B.WINDOWS
+WINDOWS = {"H1": (dt.date(2020, 1, 1), dt.date(2022, 12, 31)),      # BFX 002: Dukascopy's bond quotes are
+           "H2": (dt.date(2023, 1, 1), dt.date(2025, 12, 31)),      # missing or stale before 2020
+           "FULL": (dt.date(2020, 1, 1), dt.date(2025, 12, 31))}
 METHODS = ("leadlag", "residual", "coint")
 BOND_SHORT = {s: v["short"] for s, v in B.SYMBOLS.items()}
 
