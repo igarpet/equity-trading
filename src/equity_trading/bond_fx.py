@@ -40,7 +40,7 @@ import pandas as pd
 from . import bond_seasonality as B
 from . import fx_seasonality as F
 
-BFX_VERSION = "0.2.0"   # 0.2.0: windows re-split on 2020-2025 (BFX 002); 0.1.1: zero/negative quotes treated as missing
+BFX_VERSION = "0.2.1"   # 0.2.1: E4 also needs best t > 0; 0.2.0: windows re-split on 2020-2025 (BFX 002); 0.1.1: zero/negative quotes treated as missing
 PAIRINGS = {"EURUSD": ("BUNDTREUR", "USTBONDTRUSD"),
             "GBPUSD": ("UKGILTTRGBP", "USTBONDTRUSD"),
             "USDJPY": ("USTBONDTRUSD",),
@@ -600,7 +600,7 @@ def d0_table(res: pd.DataFrame, pl: pd.DataFrame) -> pd.DataFrame:
     real = res.groupby("pairing").agg(best_t=("t", "max"), E1_E2_E3=("E123", "sum"))
     plc = pl.groupby("pairing").agg(placebo_max_best_t=("best_t", "max"), placebo_max_E1_E2_E3=("E1_E2_E3", "max"))
     out = real.join(plc)
-    out["E4"] = out["best_t"] > out["placebo_max_best_t"]
+    out["E4"] = (out["best_t"] > out["placebo_max_best_t"]) & (out["best_t"] > 0)   # a negative best t is never structure
     out["D0"] = np.where(out["E4"], "STRUCTURE_FOUND", "NO_STRUCTURE")
     return out.reset_index()
 
