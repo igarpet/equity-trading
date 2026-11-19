@@ -1,0 +1,117 @@
+{
+  "study": "RIS01",
+  "symbol": "SR3C3",
+  "window": "H2",
+  "dates": [
+    "2024-01-01",
+    "2025-12-31"
+  ],
+  "bds_version": "0.3.0",
+  "synthetic": false,
+  "files": {
+    "first_file": "2024-01-01",
+    "expected_weekdays": 523,
+    "present_weekdays": 521,
+    "share": 0.9961759082217974,
+    "sunday_session": true
+  },
+  "missing_files": 2,
+  "contract_switches": 24,
+  "drops": [
+    {
+      "clock": "NY",
+      "days built": 522,
+      "missing file": 2,
+      "low coverage": 56,
+      "contract switch": 23,
+      "price spike": 2,
+      "kept": 439
+    },
+    {
+      "clock": "UTC",
+      "days built": 522,
+      "missing file": 2,
+      "low coverage": 58,
+      "contract switch": 23,
+      "price spike": 2,
+      "kept": 437
+    }
+  ],
+  "counted_years": 2,
+  "d2_needed": 2,
+  "tests": 2704,
+  "D1": 0,
+  "D1_D2": 0,
+  "D1_D2_D3": 0,
+  "D1_D2_D3_cfd": 0,
+  "candidates": 0,
+  "pooled_bonferroni_candidates": 0,
+  "placebo_D1_D2_D3": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "D0": "NO_STRUCTURE",
+  "candidates_sha256": "7354c3c9758f95d38aefe5ce40a2504436080d2f2b40b357513993f20d0fd522",
+  "config": {
+    "durations": [
+      15,
+      30,
+      60,
+      120,
+      240
+    ],
+    "start_step": 5,
+    "rel_coverage": 0.5,
+    "min_file_share": 0.95,
+    "min_year_days": 120,
+    "year_share_d2": 0.75,
+    "year_share_k4": 0.6,
+    "nw_lags": 5,
+    "fdr_q": 0.05,
+    "commission_bps_rt": 0.7,
+    "max_candidates": 10,
+    "n_placebo": 20,
+    "conf_fdr_q": 0.05,
+    "alpha": 0.025,
+    "blocks": [
+      10,
+      20
+    ],
+    "n_boot": 10000,
+    "seed": 42,
+    "break_minutes": 30,
+    "roll_extra_ratio": 8.0,
+    "switch_rule": "signature",
+    "early_stop": [
+      15,
+      25
+    ],
+    "midday_break": [
+      45,
+      90
+    ],
+    "spike_abs_bps": 100.0,
+    "spike_revert_bps": 50.0,
+    "spike_revert_share": 0.8,
+    "spike_revert_minutes": 5,
+    "trim": 0.01
+  }
+}
