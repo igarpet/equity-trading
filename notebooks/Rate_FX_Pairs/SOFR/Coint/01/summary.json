@@ -1,0 +1,140 @@
+{
+  "study": "RFX01-SOFR",
+  "method": "coint",
+  "window": "H1",
+  "dates": [
+    "2022-01-01",
+    "2023-12-31"
+  ],
+  "bfx_version": "0.3.0",
+  "synthetic": false,
+  "bars": {
+    "EURUSD": 132392,
+    "GBPUSD": 132104,
+    "USDJPY": 131792
+  },
+  "legs": {
+    "EURUSD": {
+      "file_share": 1.0,
+      "missing_days": 0,
+      "spike_minutes": 1
+    },
+    "SR3": {
+      "file_share": 0.9980769230769231,
+      "missing_days": 1,
+      "spike_minutes": 28
+    },
+    "GBPUSD": {
+      "file_share": 1.0,
+      "missing_days": 0,
+      "spike_minutes": 2
+    },
+    "USDJPY": {
+      "file_share": 1.0,
+      "missing_days": 0,
+      "spike_minutes": 4
+    }
+  },
+  "tests": 18,
+  "E1": 0,
+  "E1_E2": 0,
+  "E1_E2_E3": 0,
+  "candidates": 0,
+  "candidate_ids": [],
+  "d0": [
+    {
+      "pairing": "EURUSD",
+      "best_t": -0.5836346611633803,
+      "E1_E2_E3": 0,
+      "placebo_max_best_t": 1.3780031383620581,
+      "placebo_max_E1_E2_E3": 0,
+      "E4": false,
+      "D0": "NO_STRUCTURE"
+    },
+    {
+      "pairing": "GBPUSD",
+      "best_t": 1.00512331749582,
+      "E1_E2_E3": 0,
+      "placebo_max_best_t": 1.747350949092219,
+      "placebo_max_E1_E2_E3": 0,
+      "E4": false,
+      "D0": "NO_STRUCTURE"
+    },
+    {
+      "pairing": "USDJPY",
+      "best_t": 0.776189602360019,
+      "E1_E2_E3": 0,
+      "placebo_max_best_t": 1.2198670358103276,
+      "placebo_max_E1_E2_E3": 0,
+      "E4": false,
+      "D0": "NO_STRUCTURE"
+    }
+  ],
+  "D0": "NO_STRUCTURE",
+  "candidates_sha256": "8ef50af644e5ebc09c36db58fb71f40cf45a4c9e00ac37260dc75d9d169953f5",
+  "config": {
+    "bar_minutes": 5,
+    "min_file_share": 0.95,
+    "ll_beta_days": 20,
+    "ll_L": [
+      1,
+      3,
+      6
+    ],
+    "ll_H": [
+      1,
+      3,
+      6,
+      12
+    ],
+    "ll_k": [
+      1.5,
+      2.5
+    ],
+    "rr_W": [
+      1,
+      5
+    ],
+    "rr_open": [
+      1.5,
+      2.0,
+      2.5
+    ],
+    "rr_close": 0.5,
+    "rr_hold": [
+      12,
+      48
+    ],
+    "ci_form": [
+      20,
+      60
+    ],
+    "ci_open": [
+      1.5,
+      2.0,
+      2.5
+    ],
+    "ci_stop": 4.0,
+    "ci_hold_days": 5,
+    "ci_p": 0.05,
+    "ci_sample": 12,
+    "ci_adf_lags": 2,
+    "commission_bps_rt": 0.7,
+    "min_trades": 100,
+    "fdr_q": 0.05,
+    "min_year_days": 120,
+    "year_share_d": 0.75,
+    "year_share_k": 0.6,
+    "nw_lags": 5,
+    "n_placebo": 5,
+    "placebo_min_shift_days": 40,
+    "conf_fdr_q": 0.05,
+    "alpha": 0.025,
+    "blocks": [
+      10,
+      20
+    ],
+    "n_boot": 10000,
+    "seed": 42
+  }
+}
