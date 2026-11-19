@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import datetime as dt
 import math
+import os
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -39,8 +40,9 @@ import pandas as pd
 
 from . import bond_seasonality as B
 from . import fx_seasonality as F
+from . import rates as R
 
-BFX_VERSION = "0.2.1"   # 0.2.1: E4 also needs best t > 0; 0.2.0: windows re-split on 2020-2025 (BFX 002); 0.1.1: zero/negative quotes treated as missing
+BFX_VERSION = "0.3.0"   # 0.3.0: studies (BFX bond CFDs, RFX notes, SOFR) with Databento rate legs; 0.2.1: E4 needs best t > 0; 0.2.0: windows re-split on 2020-2025 (BFX 002); 0.1.1: zero/negative quotes treated as missing
 PAIRINGS = {"EURUSD": ("BUNDTREUR", "USTBONDTRUSD"),
             "GBPUSD": ("UKGILTTRGBP", "USTBONDTRUSD"),
             "USDJPY": ("USTBONDTRUSD",),
@@ -49,7 +51,33 @@ WINDOWS = {"H1": (dt.date(2020, 1, 1), dt.date(2022, 12, 31)),      # BFX 002: D
            "H2": (dt.date(2023, 1, 1), dt.date(2025, 12, 31)),      # missing or stale before 2020
            "FULL": (dt.date(2020, 1, 1), dt.date(2025, 12, 31))}
 METHODS = ("leadlag", "residual", "coint")
-BOND_SHORT = {s: v["short"] for s, v in B.SYMBOLS.items()}
+BOND_SHORT = {**{s: v["short"] for s, v in B.SYMBOLS.items()}, **{r: r for r in R.ROOTS}}
+
+
+@dataclass(frozen=True)
+class Study:
+    """Pairings and windows of one bond/rate-FX study; the methods, filters and gates are shared."""
+    name: str
+    pairings: dict
+    windows: dict
+
+
+STUDIES = {
+    # BFX 001/002: Dukascopy bond CFDs
+    "BFX": Study("BFX", PAIRINGS, WINDOWS),
+    # RFX 001: CME 2-year and 5-year T-Note futures (Databento bbo-1m), USD leg of each pair
+    "RFX": Study("RFX", {"EURUSD": ("ZT", "ZF"), "GBPUSD": ("ZT", "ZF"), "USDJPY": ("ZT", "ZF")},
+                 {"H1": (dt.date(2016, 1, 1), dt.date(2020, 12, 31)), "H2": (dt.date(2021, 1, 1), dt.date(2025, 12, 31)),
+                  "FULL": (dt.date(2016, 1, 1), dt.date(2025, 12, 31))}),
+    # RFX 001: 3-month SOFR futures, liquid only from 2022
+    "SOFR": Study("SOFR", {"EURUSD": ("SR3",), "GBPUSD": ("SR3",), "USDJPY": ("SR3",)},
+                  {"H1": (dt.date(2022, 1, 1), dt.date(2023, 12, 31)), "H2": (dt.date(2024, 1, 1), dt.date(2025, 12, 31)),
+                   "FULL": (dt.date(2022, 1, 1), dt.date(2025, 12, 31))}),
+}
+
+
+def tick_size(symbol: str) -> float:
+    return B.SYMBOLS[symbol]["tick"] if symbol in B.SYMBOLS else R.ROOTS[symbol]["tick"]
 
 
 @dataclass(frozen=True)
@@ -108,7 +136,8 @@ def _bars(m: pd.DataFrame, minutes: int) -> pd.DataFrame:
 
 
 def _missing_days(symbol: str, start: dt.date, end: dt.date) -> set:
-    present = {dt.date.fromisoformat(f.stem.split("_")[-1]) for f in F.day_files(symbol, start, end)}
+    files = R.day_files(symbol, start, end) if symbol in R.ROOTS else F.day_files(symbol, start, end)
+    present = {dt.date.fromisoformat(f.stem.split("_")[-1]) for f in files}
     first = min(present) if present else start
     return {first + dt.timedelta(n) for n in range((end - first).days + 1)
             if (first + dt.timedelta(n)).weekday() < 5 and (first + dt.timedelta(n)) not in present}
@@ -127,16 +156,20 @@ class Leg:
 
 def load_leg(symbol: str, start: dt.date, end: dt.date, cfg: BFXConfig) -> Leg:
     guard(start, end)
-    m = F.load_minutes(symbol, start, end, "confirmation").copy()
+    is_rate = symbol in R.ROOTS
+    m = (R.load_minutes(symbol, start, end) if is_rate else F.load_minutes(symbol, start, end, "confirmation")).copy()
     bad = ~((m["bid"] > 0) & (m["ask"] > 0) & np.isfinite(m["bid"]) & np.isfinite(m["ask"]))
     n_bad = int((bad & m["tick"]).sum())
     if bad.any():                                        # a zero price is a missing quote, not a price
         m.loc[bad, ["bid", "ask"]] = np.nan
         m[["bid", "ask"]] = m[["bid", "ask"]].ffill()
         m["tick"] = m["tick"] & ~bad
-    is_bond = symbol in B.SYMBOLS
+    is_bond = symbol in B.SYMBOLS or is_rate
     spikes = B.screen_spikes(m, cfg.bds)
-    rolls = B.detect_rolls(m, start, end, cfg.bds, symbol) if is_bond else pd.DataFrame()
+    if is_rate:
+        rolls = R.detect_rolls(m)                         # the continuous symbol's contract changes
+    else:
+        rolls = B.detect_rolls(m, start, end, cfg.bds, symbol) if is_bond else pd.DataFrame()
     lmid = np.log(0.5 * (m["bid"].to_numpy() + m["ask"].to_numpy()))
     if is_bond and len(rolls):
         adj = np.zeros(len(m))
@@ -192,10 +225,11 @@ class PairFrame:
         return self.day.astype("datetime64[Y]").astype(int) + 1970
 
 
-def frame(pairing: str, window: str, cfg: BFXConfig, legs: dict | None = None) -> PairFrame:
-    start, end = WINDOWS[window]
+def frame(pairing: str, window: str, cfg: BFXConfig, legs: dict | None = None, study: str = "BFX") -> PairFrame:
+    st = STUDIES[study]
+    start, end = st.windows[window]
     guard(start, end)
-    bonds = PAIRINGS[pairing]
+    bonds = st.pairings[pairing]
     legs = legs if legs is not None else {}
     for s in (pairing, *bonds):
         if s not in legs:
@@ -470,7 +504,7 @@ def run_coint(fr: PairFrame, cfg: BFXConfig, form: pd.DataFrame, z_open: float, 
             e = i + 1 + int(hit[0]) if len(hit) else stop
             g, nn, n2, mid = _fx_trade(fr, i, e, d, cfg)
             bond_leg = -d * float(beta @ (X[e] - X[i])) * 1e4
-            tick = float(np.sum(np.abs(beta) * np.array([B.tick_bps(b, fr.bmid[i, q]) for q, b in enumerate(fr.bonds)])))
+            tick = float(np.sum(np.abs(beta) * np.array([tick_size(b) / fr.bmid[i, q] * 1e4 for q, b in enumerate(fr.bonds)])))
             comm_b = float(np.sum(np.abs(beta))) * cfg.commission_bps_rt
             rows.append((i, e, d, fr.t[i], fr.t[e], fr.day[e], g + bond_leg - tick, nn + bond_leg - tick - comm_b,
                          n2 + bond_leg - tick - 2 * comm_b, mid, mid + bond_leg))
@@ -601,7 +635,7 @@ def d0_table(res: pd.DataFrame, pl: pd.DataFrame) -> pd.DataFrame:
     plc = pl.groupby("pairing").agg(placebo_max_best_t=("best_t", "max"), placebo_max_E1_E2_E3=("E1_E2_E3", "max"))
     out = real.join(plc)
     out["E4"] = (out["best_t"] > out["placebo_max_best_t"]) & (out["best_t"] > 0)   # a negative best t is never structure
-    out["D0"] = np.where(out["E4"], "STRUCTURE_FOUND", "NO_STRUCTURE")
+    out["D0"] = np.where(out["E4"] & (out["E1_E2_E3"] > 0), "STRUCTURE_FOUND", "NO_STRUCTURE")   # E4 alone is not structure
     return out.reset_index()
 
 
@@ -781,3 +815,89 @@ def write_synthetic_market(base: Path, start: dt.date, end: dt.date, seed: int, 
             f = root / f"{d:%Y}" / f"{sym}_{d:%Y-%m-%d}.parquet"
             f.parent.mkdir(parents=True, exist_ok=True)
             df.to_parquet(f, index=False)
+
+
+def _write_dukascopy(base: Path, sym: str, ts: pd.DatetimeIndex, days: list, lv: np.ndarray, q: np.ndarray,
+                     spread: float, dig: int) -> None:
+    mid = np.exp(lv)
+    bid, ask = np.round(mid - spread / 2, dig), np.round(mid + spread / 2, dig)
+    v = q.astype(np.float32)
+    root = Path(base) / sym / "candles_m1"
+    for n, d in enumerate(days):
+        sl = slice(n * F.SLOTS, (n + 1) * F.SLOTS)
+        df = pd.DataFrame({"ts": ts[sl], "bid_o": bid[sl], "bid_h": bid[sl], "bid_l": bid[sl], "bid_c": bid[sl],
+                           "bid_v": v[sl], "ask_o": ask[sl], "ask_h": ask[sl], "ask_l": ask[sl], "ask_c": ask[sl],
+                           "ask_v": v[sl]})
+        f = root / f"{d:%Y}" / f"{sym}_{d:%Y-%m-%d}.parquet"
+        f.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(f, index=False)
+
+
+def write_synthetic_rates(base: Path, start: dt.date, end: dt.date, seed: int, relations: bool = True) -> None:
+    """Synthetic market for the RFX study: ZT, ZF and SR3 as Databento bbo-1m day files (CME session, quotes in
+    90% of open minutes, a new instrument_id and a -30 bp price jump at each quarterly roll), and EURUSD,
+    GBPUSD, USDJPY as Dukascopy candles. ``base`` is <EQUITY_TRADING_DIR>.
+
+    With ``relations``: USDJPY minute returns = -0.4 x ZT now - 0.8 x ZT 5 minutes earlier + noise (lead-lag);
+    EURUSD adjusts towards c + 0.3 log ZT - 0.3 log ZF with a half-life of 1 day (cointegration);
+    log GBPUSD = c - 0.4 log ZF + OU (half-life 30 minutes, sd 4 bp), ZF three times as volatile as ZT
+    (residual reversion). SR3 is unrelated to every pair."""
+    rng = np.random.default_rng(seed)
+    base = Path(base)
+    days = [start + dt.timedelta(n) for n in range((end - start).days + 1)]
+    days = [d for d in days if d.weekday() != 5]
+    ts = pd.DatetimeIndex(np.concatenate([pd.date_range(pd.Timestamp(d), periods=F.SLOTS, freq="1min").to_numpy()
+                                          for d in days])).tz_localize("UTC")
+    N = len(ts)
+    ny = ts.tz_convert(F.NY)
+    nwd, nmod = np.asarray(ny.weekday), np.asarray(ny.hour * 60 + ny.minute)
+    fx_open = ~(((nwd == 4) & (nmod >= 17 * 60)) | (nwd == 5) | ((nwd == 6) & (nmod < 17 * 60)))
+    op = B._open("USTBONDTRUSD", ts)                      # CME session: Sunday 18:00 -> Friday 17:00 New York
+    rolls = B.roll_days(start, end)
+    roll_idx = [int(np.searchsorted(ts, pd.Timestamp(d, tz="UTC") + pd.Timedelta(hours=15))) for d in rolls]
+    econ = {}
+    for root, vol, px in (("ZT", 0.5e-4, 105.0), ("ZF", 1.5e-4, 115.0), ("SR3", 0.3e-4, 97.0)):
+        r = rng.normal(0, vol, N) * op
+        e = np.log(px) + np.cumsum(r)
+        jump = np.zeros(N); iid = np.full(N, 1000, np.int64)
+        for k, i in enumerate(roll_idx):
+            if i < N:
+                jump[i] = -30e-4
+                iid[i:] = 1001 + k
+        econ[root] = e
+        lv = e + np.cumsum(jump)
+        q = op & (rng.random(N) < 0.9)
+        mid = np.exp(lv)
+        df = pd.DataFrame({"ts": ts[q], "bid_c": np.round(mid[q] - 0.004, 6), "ask_c": np.round(mid[q] + 0.004, 6),
+                           "bid_v": 100.0, "ask_v": 100.0, "instrument_id": iid[q]})
+        old = os.environ.get("EQUITY_TRADING_DIR")
+        os.environ["EQUITY_TRADING_DIR"] = str(base)
+        try:
+            R.write_days(df, root)
+        finally:
+            if old is None:
+                os.environ.pop("EQUITY_TRADING_DIR", None)
+            else:
+                os.environ["EQUITY_TRADING_DIR"] = old
+    eps = lambda sd: rng.normal(0, sd, N) * fx_open
+    zt, zf = econ["ZT"], econ["ZF"]
+    fx = {}
+    if relations:
+        r_zt = np.r_[0.0, np.diff(zt)]
+        lag = np.r_[np.zeros(5), r_zt[:-5]]
+        fx["USDJPY"] = np.log(110.0) + np.cumsum((-0.4 * r_zt - 0.8 * lag) * fx_open + eps(0.3e-4))
+        target = np.log(1.10) + 0.3 * (zt - zt[0]) - 0.3 * (zf - zf[0])
+        a = 2 ** (-1 / 1440); e = eps(0.2e-4); out = np.empty(N); out[0] = target[0]
+        for i in range(1, N):
+            out[i] = out[i - 1] + ((1 - a) * (target[i] - out[i - 1]) + e[i] if fx_open[i] else 0.0)
+        fx["EURUSD"] = out
+        d = np.zeros(N); a = 2 ** (-1 / 30); z = rng.normal(0, 4e-4 * math.sqrt(1 - a * a), N)
+        for i in range(1, N):
+            d[i] = a * d[i - 1] + z[i] if fx_open[i] else d[i - 1]
+        fx["GBPUSD"] = np.log(1.30) - 0.4 * (zf - zf[0]) + d
+    else:
+        for p0, px in (("USDJPY", 110.0), ("EURUSD", 1.10), ("GBPUSD", 1.30)):
+            fx[p0] = np.log(px) + np.cumsum(eps(0.4e-4))
+    for p0, lv in fx.items():
+        _write_dukascopy(base / "Dukascopy", p0, ts, days, lv, fx_open & (rng.random(N) < 0.95), 0.2 * F.pip_size(p0),
+                         3 if p0.endswith("JPY") else 5)
