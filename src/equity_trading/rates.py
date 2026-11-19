@@ -7,7 +7,7 @@ root  contract                    tick (price points)         used years
 ====  ==========================  ==========================  ==============
 ZT    2-year T-Note               1/8 of 1/32 = 0.00390625    2016-2025
 ZF    5-year T-Note               1/4 of 1/32 = 0.0078125     2016-2025
-SR3   3-month SOFR                0.0025 (front) / 0.005      2022-2025
+SR3   3-month SOFR                0.0025 (front) / 0.005      2022-2025 (downloaded from 2022)
 ====  ==========================  ==========================  ==============
 
 Layout under <EQUITY_TRADING_DIR>/Databento:
@@ -31,13 +31,13 @@ import pandas as pd
 
 from .data import vendor_dir
 
-RATES_VERSION = "0.1.1"   # 0.1.1: retries on Databento server errors (504 gateway timeouts)
+RATES_VERSION = "0.1.2"   # 0.1.2: SR3 from 2022; months with no tradable symbol skipped; 0.1.1: retries on Databento server errors (504 gateway timeouts)
 DATASET = "GLBX.MDP3"
 SCHEMA = "bbo-1m"
 HOLDOUT_START = dt.date(2026, 1, 1)
 ROOTS = {"ZT": {"name": "2-year T-Note", "tick": 1 / 256, "start": 2016},
          "ZF": {"name": "5-year T-Note", "tick": 1 / 128, "start": 2016},
-         "SR3": {"name": "3-month SOFR", "tick": 0.005, "start": 2018}}
+         "SR3": {"name": "3-month SOFR", "tick": 0.005, "start": 2022}}   # listed May 2018; the study uses 2022-2025
 COLUMNS = ["ts", "bid_c", "ask_c", "bid_v", "ask_v", "instrument_id"]
 
 
@@ -156,7 +156,14 @@ def download(cl, roots: list[str], start_year: int, end_year: int, budget: float
                 rows.append({"key": key, "status": "normalised from raw", "cost_usd": 0.0, "days": n})
                 continue
             q = query(root, a, b)
-            cost = float(retry(cl.metadata.get_cost, log=log, **q))
+            try:
+                cost = float(retry(cl.metadata.get_cost, log=log, **q))
+            except Exception as e:
+                if "symbology_invalid_request" in str(e) or "could not be resolved" in str(e):
+                    rows.append({"key": key, "status": "no symbol that month (not listed yet)", "cost_usd": 0.0, "days": 0})
+                    log(f"{key}: no symbol that month, skipped")
+                    continue
+                raise
             spent = spent_usd()
             if spent + cost > budget:
                 rows.append({"key": key, "status": f"stopped: {spent:.2f} + {cost:.2f} > budget {budget:.2f}",

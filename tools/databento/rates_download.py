@@ -3,7 +3,7 @@
 
   ZT  (2-year T-Note)  2016-2025
   ZF  (5-year T-Note)  2016-2025
-  SR3 (3-month SOFR)   2018-2025 (the study uses 2022-2025; earlier years are thin and cost cents)
+  SR3 (3-month SOFR)   2022-2025 (listed May 2018, liquid from 2022; the study uses 2022-2025)
 
 Front contract rolled by volume (continuous ``<ROOT>.v.0``), month by month. Before each request the quoted cost
 is checked against the shared ledger (<EQUITY_TRADING_DIR>/Databento/ledger.csv, also used by futures.py) and the
