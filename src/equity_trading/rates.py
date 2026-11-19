@@ -31,7 +31,7 @@ import pandas as pd
 
 from .data import vendor_dir
 
-RATES_VERSION = "0.1.0"
+RATES_VERSION = "0.1.1"   # 0.1.1: retries on Databento server errors (504 gateway timeouts)
 DATASET = "GLBX.MDP3"
 SCHEMA = "bbo-1m"
 HOLDOUT_START = dt.date(2026, 1, 1)
@@ -119,6 +119,21 @@ def months(start_year: int, end_year: int) -> list[tuple[dt.date, dt.date]]:
     return out
 
 
+def retry(fn, *args, tries: int = 6, wait: float = 5.0, log=print, **kw):
+    """Call fn, retrying server-side errors (5xx, timeouts) with growing waits. Client errors are raised at once."""
+    import time
+    for k in range(tries):
+        try:
+            return fn(*args, **kw)
+        except Exception as e:
+            msg = str(e)
+            transient = any(c in msg for c in ("500", "502", "503", "504", "timed out", "Timeout", "Connection"))
+            if not transient or k == tries - 1:
+                raise
+            log(f"  Databento: {msg[:60]} -> retry {k + 1}/{tries - 1} in {wait * (k + 1):.0f} s")
+            time.sleep(wait * (k + 1))
+
+
 def query(root: str, a: dt.date, b: dt.date) -> dict:
     return dict(dataset=DATASET, symbols=[f"{root}.v.0"], stype_in="continuous", schema=SCHEMA,
                 start=a.isoformat(), end=b.isoformat())
@@ -141,7 +156,7 @@ def download(cl, roots: list[str], start_year: int, end_year: int, budget: float
                 rows.append({"key": key, "status": "normalised from raw", "cost_usd": 0.0, "days": n})
                 continue
             q = query(root, a, b)
-            cost = float(cl.metadata.get_cost(**q))
+            cost = float(retry(cl.metadata.get_cost, log=log, **q))
             spent = spent_usd()
             if spent + cost > budget:
                 rows.append({"key": key, "status": f"stopped: {spent:.2f} + {cost:.2f} > budget {budget:.2f}",
@@ -154,7 +169,7 @@ def download(cl, roots: list[str], start_year: int, end_year: int, budget: float
             raw.parent.mkdir(parents=True, exist_ok=True)
             tmp = raw.with_suffix(".part")
             try:
-                cl.timeseries.get_range(**q, path=tmp)
+                retry(cl.timeseries.get_range, log=log, **q, path=tmp)
             except Exception as e:                       # e.g. no data for that month
                 rows.append({"key": key, "status": f"error: {str(e)[:80]}", "cost_usd": cost, "days": 0})
                 log(f"{key}: {rows[-1]['status']}")

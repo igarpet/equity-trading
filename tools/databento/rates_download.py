@@ -43,10 +43,14 @@ def main() -> int:
     if a.dry_run:
         rows = []
         for root in roots:
-            for m0, m1 in R.months(max(a.start, R.ROOTS[root]["start"]), a.end):
-                if (R.raw_dir(root) / f"{m0:%Y-%m}.dbn.zst").exists():
+            for y in range(max(a.start, R.ROOTS[root]["start"]), a.end + 1):       # one quote per year: fewer calls
+                todo = [m for m in R.months(y, y) if not (R.raw_dir(root) / f"{m[0]:%Y-%m}.dbn.zst").exists()]
+                if not todo:
                     continue
-                rows.append({"root": root, "year": m0.year, "usd": float(cl.metadata.get_cost(**R.query(root, m0, m1)))})
+                q = R.query(root, todo[0][0], todo[-1][1])
+                usd = float(R.retry(cl.metadata.get_cost, **q))
+                rows.append({"root": root, "year": y, "usd": usd})
+                print(f"  {root} {y}: ${usd:.3f}", flush=True)
         df = pd.DataFrame(rows)
         if df.empty:
             print("everything already downloaded")
