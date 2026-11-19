@@ -40,8 +40,9 @@ import numpy as np
 import pandas as pd
 
 from . import fx_seasonality as F
+from . import rates as R
 
-BDS_VERSION = "0.2.0"   # 0.2.0: switch detection by Dukascopy's adjustment-break signature, 1-minute spike screen (BDS 002)
+BDS_VERSION = "0.3.0"   # 0.3.0: US rate futures (RIS 001: ZT, ZF, SR3C3; Databento bbo-1m, quoted futures costs);   # 0.2.0: switch detection by Dukascopy's adjustment-break signature, 1-minute spike screen (BDS 002)
 SYMBOLS = {
     "USTBONDTRUSD": {"short": "UST", "name": "US T-Bond", "tick": 1 / 32, "future": "ZB (CBOT T-Bond)",
                      "tz": "America/New_York", "close": 17 * 60},
@@ -55,6 +56,28 @@ WINDOWS = {"H1": (dt.date(2018, 1, 1), dt.date(2021, 12, 31)),
            "FULL": (dt.date(2018, 1, 1), dt.date(2025, 12, 31))}
 HOLDOUT_START = dt.date(2026, 1, 1)
 CLOCKS = F.CLOCKS
+
+# RIS 001: US rate futures (Databento bbo-1m, CME session, close 17:00 New York)
+RATE_SYMBOLS = {r: {"short": r, "name": R.ROOTS[r]["name"], "tick": R.ROOTS[r]["tick"], "future": r,
+                    "tz": "America/New_York", "close": 17 * 60} for r in ("ZT", "ZF", "SR3C3")}
+_NOTES = {"H1": (dt.date(2016, 1, 1), dt.date(2020, 12, 31)), "H2": (dt.date(2021, 1, 1), dt.date(2025, 12, 31)),
+          "FULL": (dt.date(2016, 1, 1), dt.date(2025, 12, 31))}
+RATE_WINDOWS = {"ZT": _NOTES, "ZF": _NOTES,
+                "SR3C3": {"H1": (dt.date(2022, 1, 1), dt.date(2023, 12, 31)),
+                          "H2": (dt.date(2024, 1, 1), dt.date(2025, 12, 31)),
+                          "FULL": (dt.date(2022, 1, 1), dt.date(2025, 12, 31))}}
+
+
+def info(symbol: str) -> dict:
+    return SYMBOLS[symbol] if symbol in SYMBOLS else RATE_SYMBOLS[symbol]
+
+
+def is_rate(symbol: str) -> bool:
+    return symbol in RATE_SYMBOLS
+
+
+def windows_for(symbol: str) -> dict:
+    return RATE_WINDOWS[symbol] if is_rate(symbol) else WINDOWS
 ROLL_MONTHS = (3, 6, 9, 12)
 
 
@@ -146,15 +169,15 @@ def _signature(br: pd.DataFrame, symbol: str, cfg: BDSConfig) -> pd.Series:
       time), because on the adjustment day CFD trading stops 20 minutes early;
     B ``midday``: a 45-90 minute break that starts and ends during the session (the adjustment break seen in
       2018-2019). Returns "early_stop", "midday" or "" per break."""
-    info = SYMBOLS[symbol]
-    loc = br["before"].dt.tz_convert(info["tz"])
+    info_ = info(symbol)
+    loc = br["before"].dt.tz_convert(info_["tz"])
     mod = loc.dt.hour * 60 + loc.dt.minute
-    lead = info["close"] - 1 - mod                      # minutes between the last quote and the close's last minute
+    lead = info_["close"] - 1 - mod                      # minutes between the last quote and the close's last minute
     a = (lead >= cfg.early_stop[0] - 1) & (lead <= cfg.early_stop[1])
-    after = br["after"].dt.tz_convert(info["tz"])
+    after = br["after"].dt.tz_convert(info_["tz"])
     mod_a = after.dt.hour * 60 + after.dt.minute
     b = (br["minutes"] >= cfg.midday_break[0]) & (br["minutes"] <= cfg.midday_break[1]) & \
-        (mod >= 6 * 60) & (mod_a <= info["close"] - 60) & (loc.dt.date == after.dt.date)
+        (mod >= 6 * 60) & (mod_a <= info_["close"] - 60) & (loc.dt.date == after.dt.date)
     return pd.Series(np.where(a, "early_stop", np.where(b, "midday", "")), index=br.index)
 
 
@@ -228,16 +251,17 @@ def _subset(p: F.Panel, keep: np.ndarray) -> F.Panel:
 
 
 def load(symbol: str, window: str, cfg: BDSConfig, drop_rolls: bool = True) -> BondData:
-    start, end = WINDOWS[window]
+    start, end = windows_for(symbol)[window]
     guard(start, end)
-    files = F.day_files(symbol, start - dt.timedelta(days=1), end)
+    rate = is_rate(symbol)
+    files = (R.day_files if rate else F.day_files)(symbol, start - dt.timedelta(days=1), end)
     if not files:
-        raise FileNotFoundError(f"No candle files for {symbol} under {F.candles_root(symbol)}")
+        raise FileNotFoundError(f"No day files for {symbol} in {start}..{end}")
     present = {dt.date.fromisoformat(f.stem.split("_")[-1]) for f in files}
     first = min(d for d in present if d >= start) if any(d >= start for d in present) else None
     if first is None:
         raise FileNotFoundError(f"No candle files for {symbol} in {start}..{end}")
-    minutes = F.load_minutes(symbol, first, end, "confirmation")
+    minutes = R.load_minutes(symbol, first, end) if rate else F.load_minutes(symbol, first, end, "confirmation")
     live = minutes["tick"].groupby(minutes.index.tz_convert("UTC").date).sum()
     sundays = [d for d in present if d.weekday() == 6 and first <= d <= end]
     sunday_session = bool(sundays) and float(np.mean([live.get(d, 0) > 0 for d in sundays])) >= 0.5
@@ -249,7 +273,12 @@ def load(symbol: str, window: str, cfg: BDSConfig, drop_rolls: bool = True) -> B
           "present_weekdays": sum(d in present for d in weekdays),
           "share": sum(d in present for d in weekdays) / len(weekdays), "sunday_session": sunday_session,
           "missing": missing}
-    rolls = detect_rolls(minutes, first, end, cfg, symbol)
+    if rate:                                             # contract changes of the continuous symbol
+        rolls = R.detect_rolls(minutes)
+        if len(rolls):
+            rolls = rolls[(rolls["after"].dt.date >= first) & (rolls["after"].dt.date <= end)].reset_index(drop=True)
+    else:
+        rolls = detect_rolls(minutes, first, end, cfg, symbol)
     spikes = screen_spikes(minutes, cfg)
     spike_lab = {c: set() for c in CLOCKS}
     for t in spikes["ts"]:
@@ -286,11 +315,12 @@ def counted_years(panel: F.Panel, cfg: BDSConfig) -> list[int]:
 
 
 def tick_bps(symbol: str, mid) -> np.ndarray:
-    return SYMBOLS[symbol]["tick"] / np.asarray(mid, float) * 1e4
+    return info(symbol)["tick"] / np.asarray(mid, float) * 1e4
 
 
 def cost_bps(panel: F.Panel, cfg: BDSConfig) -> float:
-    """Futures-equivalent round trip: one tick at the window's median price + commission."""
+    """Futures-equivalent round trip: one tick at the window's median price + commission. For rate futures (real
+    futures quotes) the gate uses the quoted spread instead (``scan_panel``)."""
     return float(tick_bps(panel.pair, np.median(panel.mid))) + cfg.commission_bps_rt
 
 
@@ -319,7 +349,8 @@ def scan_panel(panel: F.Panel, cfg: BDSConfig, rng: np.random.Generator | None =
     return pd.DataFrame({"pair": panel.pair, "clock": panel.clock, "start": iv[:, 0], "end": iv[:, 1],
                          "minutes": iv[:, 1] - iv[:, 0], "n_days": len(R), "mean_bps": m, "se_bps": se, "t": t,
                          "p": 2 * norm.sf(np.abs(t)), "years_same_sign": same,
-                         "cost_bps": cost_bps(panel, cfg),
+                         "cost_bps": ((spr[iv[:, 0]] + spr[iv[:, 1]]) / 2 + cfg.commission_bps_rt) if is_rate(panel.pair)
+                         else cost_bps(panel, cfg),
                          "cost_cfd_bps": (spr[iv[:, 0]] + spr[iv[:, 1]]) / 2 + cfg.commission_bps_rt})
 
 
@@ -381,8 +412,9 @@ def trades(panel: F.Panel, start: int, end: int, direction: int, cfg: BDSConfig)
     `gross_pips` holds the mid move in price points (name kept for F.confirm)."""
     mid = panel.mid
     move = interval_returns(panel, start, end, direction)
-    gross = move - tick_bps(panel.pair, mid[:, start])
     cfd = F.candidate_trades(panel, start, end, direction, cfg.fx())
+    # rate futures: their own quotes are the futures market, so gross = at the quoted bid/ask
+    gross = cfd["gross_bps"].to_numpy() if is_rate(panel.pair) else move - tick_bps(panel.pair, mid[:, start])
     return pd.DataFrame({"date": panel.dates, "year": panel.years, "mid_bps": move, "gross_bps": gross,
                          "net_bps": gross - cfg.commission_bps_rt, "net2_bps": gross - 2 * cfg.commission_bps_rt,
                          "gross_pips": direction * (mid[:, end] - mid[:, start]),
@@ -428,7 +460,7 @@ def load_frozen(folder: Path) -> tuple[pd.DataFrame, dict]:
 
 # ----------------------------------------------------------------------------- synthetic data
 def _local(symbol: str, ts: pd.DatetimeIndex):
-    loc = ts.tz_convert(SYMBOLS[symbol]["tz"])
+    loc = ts.tz_convert(info(symbol)["tz"])
     return loc, np.asarray(loc.hour * 60 + loc.minute)
 
 
@@ -441,7 +473,7 @@ def _open(symbol: str, ts: pd.DatetimeIndex) -> np.ndarray:
         closed = (wd == 5) | ((wd == 6) & (mod < 18 * 60)) | ((wd == 4) & (mod >= 17 * 60)) | \
                  ((wd < 4) & (mod >= 17 * 60) & (mod < 18 * 60))
         return ~closed
-    return (wd < 5) & (mod >= 8 * 60) & (mod < SYMBOLS[symbol]["close"])
+    return (wd < 5) & (mod >= 8 * 60) & (mod < info(symbol)["close"])
 
 
 def roll_days(start: dt.date, end: dt.date) -> list[dt.date]:
@@ -471,7 +503,7 @@ def write_synthetic_bond(base: Path, symbol: str, start: dt.date, end: dt.date, 
     root = Path(base) / symbol / "candles_m1"
     lp, pending = np.log(price), 0.0
     rolls = set(roll_days(start, end))
-    close = SYMBOLS[symbol]["close"]
+    close = info(symbol)["close"]
     gap_days = set()
     for y in range(start.year, end.year + 1):
         for m in ROLL_MONTHS:
@@ -532,3 +564,45 @@ def write_synthetic_bond(base: Path, symbol: str, start: dt.date, end: dt.date, 
         for f in rng.choice(wk, missing, replace=False):
             f.unlink()
     return root
+
+
+def write_synthetic_rate(base: Path, root: str, start: dt.date, end: dt.date, seed: int, drift_bps: float = 0.0,
+                         drift_ny_min: tuple = (510, 570), roll_bps: float = -30.0, price: float = 105.0,
+                         vol_bps: float = 0.5) -> None:
+    """Synthetic rate future in the Databento bbo-1m day-file layout under ``base`` (<EQUITY_TRADING_DIR>):
+    CME session (Sunday 18:00 -> Friday 17:00 New York, break 17:00-18:00), quotes in 90% of open minutes,
+    spread one tick, a new instrument_id and a `roll_bps` jump at 15:00 UTC on each synthetic roll day,
+    `drift_bps` per day spread over [drift_ny_min) New York minutes."""
+    import os
+    rng = np.random.default_rng(seed)
+    days = [start + dt.timedelta(n) for n in range((end - start).days + 1)]
+    days = [d for d in days if d.weekday() != 5]
+    ts = pd.DatetimeIndex(np.concatenate([pd.date_range(pd.Timestamp(d), periods=F.SLOTS, freq="1min").to_numpy()
+                                          for d in days])).tz_localize("UTC")
+    N = len(ts)
+    op = _open("USTBONDTRUSD", ts)
+    ny = ts.tz_convert(F.NY)
+    nm = np.asarray(ny.hour * 60 + ny.minute)
+    a, b = drift_ny_min
+    r = rng.normal(0, vol_bps * 1e-4, N) * op
+    r = r + np.where(op & (nm >= a) & (nm < b) & (np.asarray(ny.weekday) < 5), drift_bps * 1e-4 / (b - a), 0.0)
+    iid = np.full(N, 1000, np.int64)
+    for k, d in enumerate(roll_days(start, end)):
+        i = int(np.searchsorted(ts, pd.Timestamp(d, tz="UTC") + pd.Timedelta(hours=15)))
+        if i < N:
+            r[i] += roll_bps * 1e-4
+            iid[i:] = 1001 + k
+    mid = np.exp(np.log(price) + np.cumsum(r))
+    q = op & (rng.random(N) < 0.9)
+    half = info(root)["tick"] / 2
+    df = pd.DataFrame({"ts": ts[q], "bid_c": mid[q] - half, "ask_c": mid[q] + half, "bid_v": 100.0, "ask_v": 100.0,
+                       "instrument_id": iid[q]})
+    old = os.environ.get("EQUITY_TRADING_DIR")
+    os.environ["EQUITY_TRADING_DIR"] = str(base)
+    try:
+        R.write_days(df, root)
+    finally:
+        if old is None:
+            os.environ.pop("EQUITY_TRADING_DIR", None)
+        else:
+            os.environ["EQUITY_TRADING_DIR"] = old

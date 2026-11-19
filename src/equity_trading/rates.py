@@ -31,13 +31,18 @@ import pandas as pd
 
 from .data import vendor_dir
 
-RATES_VERSION = "0.1.2"   # 0.1.2: SR3 from 2022; months with no tradable symbol skipped; 0.1.1: retries on Databento server errors (504 gateway timeouts)
+RATES_VERSION = "0.2.0"   # 0.2.0: SR3C3 (fixed 4th quarterly SOFR contract, SR3.c.3); 0.1.2: SR3 from 2022; months with no tradable symbol skipped; 0.1.1: retries on Databento server errors (504 gateway timeouts)
 DATASET = "GLBX.MDP3"
 SCHEMA = "bbo-1m"
 HOLDOUT_START = dt.date(2026, 1, 1)
 ROOTS = {"ZT": {"name": "2-year T-Note", "tick": 1 / 256, "start": 2016},
          "ZF": {"name": "5-year T-Note", "tick": 1 / 128, "start": 2016},
-         "SR3": {"name": "3-month SOFR", "tick": 0.005, "start": 2022}}   # listed May 2018; the study uses 2022-2025
+         # SR3.v.0 (volume roll) switched contract 217 times in 2022-2023: the most traded SOFR contract is not the
+         # front one and leadership moves between maturities, so the series hops along the curve. Kept for the
+         # record (SOFR study of RFX 001); SR3C3 replaces it.
+         "SR3": {"name": "3-month SOFR (volume roll)", "tick": 0.005, "start": 2022},
+         "SR3C3": {"name": "3-month SOFR, 4th quarterly contract (about 9-12 months ahead)", "tick": 0.005,
+                   "start": 2022, "symbol": "SR3.c.3"}}
 COLUMNS = ["ts", "bid_c", "ask_c", "bid_v", "ask_v", "instrument_id"]
 
 
@@ -135,7 +140,7 @@ def retry(fn, *args, tries: int = 6, wait: float = 5.0, log=print, **kw):
 
 
 def query(root: str, a: dt.date, b: dt.date) -> dict:
-    return dict(dataset=DATASET, symbols=[f"{root}.v.0"], stype_in="continuous", schema=SCHEMA,
+    return dict(dataset=DATASET, symbols=[ROOTS[root].get("symbol", f"{root}.v.0")], stype_in="continuous", schema=SCHEMA,
                 start=a.isoformat(), end=b.isoformat())
 
 

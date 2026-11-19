@@ -123,3 +123,22 @@ def test_spike_screen(market_dir):
     assert set(bd.spikes["ts"].dt.date) == {D(2019, 5, 15)}
     assert (bd.drops["price spike"] == 1).all()
     assert np.datetime64("2019-05-15") not in bd.panels["UTC"].dates
+
+
+def test_rate_future_drift_found_with_quoted_costs(market_dir, monkeypatch):
+    """RIS 001: a rate future in the Databento layout; contract rolls dropped; D3 uses the quoted spread."""
+    monkeypatch.setitem(B.RATE_WINDOWS, "ZT", {"T": (D(2018, 1, 1), D(2019, 12, 31))})
+    B.write_synthetic_rate(market_dir, "ZT", D(2017, 12, 28), D(2019, 12, 31), seed=9, drift_bps=3.0)
+    cfg = B.BDSConfig(min_year_days=100)
+    bd = B.load("ZT", "T", cfg)
+    assert len(bd.rolls) == 8 and (bd.drops["contract switch"] >= 8).all()
+    sc = pd.concat([B.scan_panel(bd.panels[c], cfg) for c in B.CLOCKS], ignore_index=True)
+    spr = float(np.median(bd.panels["NY"].spread_bps()))
+    assert sc["cost_bps"].median() == pytest.approx(spr + 0.70, abs=0.05)       # quoted futures spread, not one tick
+    n, need = B.d2_needed(bd.panels, cfg)
+    s, c = B.select(sc, cfg, need, "ZT", "T")
+    assert len(c) >= 1 and c.iloc[0]["direction"] == 1
+    assert F._overlap(F._utc_segments(c.iloc[0]["clock"], int(c.iloc[0]["start"]), int(c.iloc[0]["end"])),
+                      F._utc_segments("NY", 930, 990))
+    tr = B.trades(bd.panels["NY"], 930, 990, 1, cfg)
+    assert np.allclose(tr["gross_bps"], tr["cfd_net_bps"] + 0.70)                  # gross at the quoted bid/ask
