@@ -19,7 +19,7 @@ from scipy import stats
 from . import mnq_predict as P
 from .fx_seasonality import bh_reject
 
-REV_VERSION = "0.1.0"
+REV_VERSION = "0.2.0"   # 0.2.0: MRP 03 continuation test (MRP 004)
 TICK = 0.25
 USD_PER_TICK = 0.50
 
@@ -219,3 +219,38 @@ def frozen_ok(path: Path, sha: str) -> bool:
 def day_block_lower(tr: pd.DataFrame, cost_ticks: float, n_boot: int = 5000, seed: int = 0) -> dict:
     daily = (tr["gross_ticks"] - cost_ticks).groupby(tr["trade_date"]).sum().to_numpy()
     return P.day_block_bootstrap(daily, n_boot=n_boot, seed=seed, block=5)
+
+
+# ----------------------------------------------------------------------------- MRP 03: continuation on the test window
+
+CONTINUATION_CONFIGS = tuple((k, d, h, "all") for k in (3.0, 4.0) for d in (0, 1) for h in (3, 6))   # MRP 004 §3
+
+
+def continuation_test(bt: pd.DataFrame, rc: RevConfig, periods: dict, cfgs=CONTINUATION_CONFIGS,
+                      alpha: float = 0.05) -> tuple[pd.DataFrame, dict]:
+    """Trade WITH the large bar; gates C1-C4 of MRP 004 (Holm across ``cfgs``)."""
+    from .mnq_predict import holm
+    clean = _clean_run(bt)
+    rows, store = [], {}
+    for k, d, h, s in cfgs:
+        name = f"cont_k{k:g}_d{d}_h{h}_{s}"
+        tr = trades(bt, k, d, h, s, clean, direction=+1)
+        store[name] = tr
+        sm = summarize(tr, rc.market_cost_ticks, periods)
+        bs = day_block_lower(tr, rc.market_cost_ticks) if len(tr) else {"lower_95": np.nan, "total": np.nan}
+        side = tr["side"].to_numpy() if len(tr) else np.array([])
+        g = tr["gross_ticks"].to_numpy(float) if len(tr) else np.array([])
+        rows.append({"config": name, "k": k, "d": d, "h": h, "session": s, **sm, "boot_lower_total": bs["lower_95"],
+                     "net_realized": summarize(tr, rc.realized_cost_ticks)["net"] if len(tr) else np.nan,
+                     "gross_long": float(g[side > 0].mean()) if (side > 0).any() else np.nan,
+                     "gross_short": float(g[side < 0].mean()) if (side < 0).any() else np.nan,
+                     "periods_positive": int(sum(sm.get(f"net_{p}", np.nan) > 0 for p in periods))})
+    df = pd.DataFrame(rows)
+    h_ = holm(dict(zip(df["config"], df["p"].fillna(1.0))), alpha)
+    df["p_holm"] = df["config"].map(h_["p_holm"])
+    df["C1"] = df["n"] >= rc.min_trades_confirm
+    df["C2"] = (df["net"] > 0) & (df["boot_lower_total"] > 0)
+    df["C3"] = df["periods_positive"] >= min(2, len(periods))
+    df["C4"] = df["p_holm"] <= alpha
+    df["confirmed"] = df["C1"] & df["C2"] & df["C3"] & df["C4"]
+    return df, store

@@ -92,3 +92,26 @@ def test_freeze(tmp_path):
     df = pd.DataFrame({"config": ["a"], "k": [3.0]})
     sha = V.freeze(df, tmp_path / "c.csv")
     assert V.frozen_ok(tmp_path / "c.csv", sha)
+
+
+def test_continuation_test_gates():
+    rng = np.random.default_rng(1)
+    days = [dt.date(2024, 1, 1) + dt.timedelta(days=i) for i in range(300)]
+    rows = []
+    for d in days:
+        n = 100
+        z = rng.standard_t(4, n)
+        steps = rng.normal(0, 4, n)
+        for b in np.flatnonzero(np.abs(z) >= 3):
+            steps[b] = np.sign(z[b]) * 40
+            for j in range(b + 1, min(b + 4, n)):
+                steps[j] += np.sign(z[b]) * 5            # 20 ticks per bar with the move
+        rows.append(pd.DataFrame({"trade_date": d, "slot": np.arange(n) + 5, "session": "ny", "z": z,
+                                  "ret": 1e-4, "eligible": True, "close": 10000 + np.cumsum(steps)}))
+    bt = pd.concat(rows, ignore_index=True)
+    bt.index = pd.date_range("2024-01-01", periods=len(bt), freq="5min", tz="UTC")
+    rc = V.RevConfig(min_trades_confirm=50)
+    per = {"a": (days[0], days[99]), "b": (days[100], days[199]), "c": (days[200], days[-1])}
+    df, _ = V.continuation_test(bt, rc, per)
+    assert len(df) == 8
+    assert df.set_index("config").loc["cont_k3_d0_h3_all", "confirmed"]

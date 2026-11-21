@@ -12,6 +12,7 @@ Protocol: [`001_claude_mrp01_preregistration.md`](../../discussions/MNQ_Return_P
 | `03_test` | test window, **gate T** and **gate E** (one-bar trade after costs); refuses without `02/summary.json` | `03/` |
 | `04_reversal_discovery` | MRP 02: reversal after large bars (|z| ≥ k), 200 configurations, ticks per contract, gates D1–D4, frozen candidates | `04/` |
 | `05_reversal_confirmation` | MRP 02: frozen candidates on the test window (one look), gates C1–C3 | `05/` |
+| `06_continuation_test` | MRP 03: trade with \|z\| ≥ 3 / 4 bars, 8 fixed configurations, test window (one look), gates C1–C4 | `06/` |
 
 **Data.** MNQ: `python tools/databento/micro_bars_download.py` (Databento `ohlcv-1m`, `MNQ.v.0`) → `<EQUITY_TRADING_DIR>/Databento/ohlcv-1m/MNQ/`. FX: the Dukascopy 1-minute candles already used by FXS / BFX.
 
@@ -29,3 +30,8 @@ Readout: [`002`](../../discussions/MNQ_Return_Prediction/002_claude_mrp01_readou
 - The only stable coefficient is the lag-2 reversal (≈ 0.9 ticks after a 1σ bar).
 
 **MRP 02** (conditional reversal, [`003`](../../discussions/MNQ_Return_Prediction/003_claude_mrp02_conditional_reversal_preregistration.md)): code ready, not run. Smoke: `MRP_SYNTHETIC=1` (with its own `MRP_REV_SYNTH_DIR`) plants a 24-tick reversal after 3-sd bars; 04 finds it and 05 confirms it.
+
+**MRP 02 result (run `548783c`): no reversal.** No configuration passes discovery, so 05 does not open the test window. Re-scored as continuation, the best configurations net +4 to +20 ticks per trade (t ≤ 2.1, all BH q ≥ 0.82), mostly from 2022, and negative in 2023H1.
+
+**MRP 03** (continuation on the test window, [`004`](../../discussions/MNQ_Return_Prediction/004_claude_mrp03_continuation_preregistration.md)): code ready, not run. This uses up the 2023-07 – 2025-12 window.
+
