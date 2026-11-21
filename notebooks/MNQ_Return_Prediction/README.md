@@ -12,6 +12,7 @@ Protocol: [`001_claude_mrp01_preregistration.md`](../../discussions/MNQ_Return_P
 | `03_test` | test window, **gate T** and **gate E** (one-bar trade after costs); refuses without `02/summary.json` | `03/` |
 | `04_reversal_discovery` | MRP 02: reversal after large bars (|z| ≥ k), 200 configurations, ticks per contract, gates D1–D4, frozen candidates | `04/` |
 | `05_reversal_confirmation` | MRP 02: frozen candidates on the test window (one look), gates C1–C3 | `05/` |
+| `07_trailing_strategy` | MRP 04: continuation entry, m·σ̂ stop, 50/30 trailing, reverse re-entry; 1-minute simulation on the training window (discovery), random-direction placebo | `07/` |
 | `06_continuation_test` | MRP 03: trade with \|z\| ≥ 3 / 4 bars, 8 fixed configurations, test window (one look), gates C1–C4 | `06/` |
 
 **Data.** MNQ: `python tools/databento/micro_bars_download.py` (Databento `ohlcv-1m`, `MNQ.v.0`) → `<EQUITY_TRADING_DIR>/Databento/ohlcv-1m/MNQ/`. FX: the Dukascopy 1-minute candles already used by FXS / BFX.
@@ -34,4 +35,8 @@ Readout: [`002`](../../discussions/MNQ_Return_Prediction/002_claude_mrp01_readou
 **MRP 02 result (run `548783c`): no reversal.** No configuration passes discovery, so 05 does not open the test window. Re-scored as continuation, the best configurations net +4 to +20 ticks per trade (t ≤ 2.1, all BH q ≥ 0.82), mostly from 2022, and negative in 2023H1.
 
 **MRP 03** (continuation on the test window, [`004`](../../discussions/MNQ_Return_Prediction/004_claude_mrp03_continuation_preregistration.md)): code ready, not run. This uses up the 2023-07 – 2025-12 window.
+
+**MRP 03 result (run `3f845db`): not confirmed.** 7 of 8 configurations lose on the test window (−6 to −28 ticks per trade at 3-tick cost; win rate 0.45–0.48, with average wins about equal to average losses); all Holm p = 1.0. Closed as the 2022 trend regime.
+
+**MRP 04** (trailing strategy, [`005`](../../discussions/MNQ_Return_Prediction/005_claude_mrp04_trailing_strategy_preregistration.md)): code ready, not run. Discovery on 2020-01 – 2023-06; confirmation only on 2026.
 
