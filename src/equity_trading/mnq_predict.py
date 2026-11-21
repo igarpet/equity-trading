@@ -24,7 +24,7 @@ from . import fx_seasonality as FXS
 from . import micro_bars as MB
 from .futures import CHICAGO, NY, cme_trade_date
 
-MRP_VERSION = "0.1.0"
+MRP_VERSION = "0.1.1"   # 0.1.1: interval coverage uses the residual sd (0.1.0 assumed unit variance: wrong in raw scale)
 LONDON = "Europe/London"
 HOLDOUT_START = dt.date(2026, 1, 1)
 BARS_PER_DAY = 276
@@ -554,6 +554,7 @@ def walk_forward(datasets: dict, refits: tuple, end: dt.date, fit_start: dt.date
             out[f"mu_{m}"] = mu
             out[f"pup_{m}"] = p_up(mu, nu, float(res.resid.std()))
             out[f"nu_{m}"] = nu
+            out[f"s_{m}"] = float(res.resid.std())
         parts.append(out)
     return pd.concat(parts).sort_index()
 
@@ -609,7 +610,8 @@ def interval_coverage(fc: pd.DataFrame, model: str, levels=(0.5, 0.9)) -> dict:
     nu = fc[f"nu_{model}"].to_numpy()
     mu = fc[f"mu_{model}"].to_numpy()
     y = fc["y"].to_numpy()
-    sc = np.sqrt((nu - 2) / nu)
+    s = fc[f"s_{model}"].to_numpy() if f"s_{model}" in fc else 1.0   # residual sd (0.1.0 omitted it: wrong in raw scale)
+    sc = s * np.sqrt((nu - 2) / nu)
     out = {}
     for lv in levels:
         h = stats.t.ppf(0.5 + lv / 2, nu) * sc
@@ -698,12 +700,14 @@ def in_window(meta: pd.DataFrame, a: dt.date, b: dt.date) -> np.ndarray:
 # ============================================================================= 8. Synthetic data (tests, smoke runs)
 
 def write_synthetic(base, start: dt.date, end: dt.date, cfg: MRPConfig = MRPConfig(), seed: int = 7,
-                    beta_jpy: float = 0.15) -> None:
+                    beta_jpy: float = 0.15, reversal_points: float = 0.0, tails_df: float | None = None) -> None:
     """Synthetic Dukascopy FX candles for cfg.pairs and MNQ ohlcv-1m month files under ``base``.
 
     MNQ: log-vol AR(1) by day, U-shaped intraday profile, quarterly contract switch with a basis jump, 1% empty
     minutes. Planted signal: each minute of 5-minute bucket b gets beta_jpy x (USDJPY bucket b-1 return / its sd)
     x the MNQ per-minute sd, i.e. a lag-1 FX effect of about beta_jpy in z units. Other pairs are noise.
+    reversal_points > 0 (MRP 02 smoke run): after every bucket whose return exceeds 3 bucket sd, buckets b+2 and b+3
+    move against it by reversal_points in total. tails_df: Student-t minute shocks (fatter tails).
     """
     import os
     from pathlib import Path
@@ -732,11 +736,22 @@ def write_synthetic(base, start: dt.date, end: dt.date, cfg: MRPConfig = MRPConf
             loc = ts.tz_convert(NY)
             mins = loc.hour * 60 + loc.minute
             prof = 1.0 + 2.5 * np.exp(-((mins - 575) / 25.0) ** 2) + 1.2 * np.exp(-((mins - 955) / 20.0) ** 2)
-            sd = 2.0e-4 * np.exp(logvol) * prof
+            sd = 2.0e-4 * np.exp(logvol) * np.asarray(prof, float)
             bucket = ts.floor("5min")
             prev_b_end = bucket - pd.Timedelta(minutes=1)        # last minute of the previous bucket
             sig = np.nan_to_num(jr5.reindex(prev_b_end).to_numpy()) / jsd
-            r = rng.normal(0, 1, len(ts)) * sd + beta_jpy * sig * sd / np.sqrt(5)   # bucket effect = beta_jpy in z
+            eps = (rng.standard_t(tails_df, len(ts)) / np.sqrt(tails_df / (tails_df - 2)) if tails_df
+                   else rng.normal(0, 1, len(ts)))
+            r = np.asarray(eps * sd + beta_jpy * sig * sd / np.sqrt(5), float)   # bucket effect = beta_jpy in z
+            if reversal_points:
+                R = r.reshape(-1, 5)
+                bsd = np.sqrt((sd ** 2).reshape(-1, 5).sum(axis=1))
+                for b in np.flatnonzero(np.abs(R.sum(axis=1)) > 3 * bsd):
+                    sgn = np.sign(R[b].sum())
+                    for bb in (b + 2, b + 3):
+                        if bb < len(R):
+                            R[bb] -= sgn * reversal_points / price / 10
+                r = R.ravel()
             lp = np.log(price) + np.cumsum(r)
             close = np.exp(lp)
             price = close[-1]
