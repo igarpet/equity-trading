@@ -1,0 +1,53 @@
+{
+ "engine": "0.1.0",
+ "synthetic": false,
+ "by_year": [
+  {
+   "year": 2020,
+   "days": 259,
+   "median_bars": 273.0,
+   "excluded_days": 2,
+   "gap_bars": 1306,
+   "rolls_mid_session": 4,
+   "empty_bar_share": 0.0194
+  },
+  {
+   "year": 2021,
+   "days": 259,
+   "median_bars": 276.0,
+   "excluded_days": 1,
+   "gap_bars": 789,
+   "rolls_mid_session": 4,
+   "empty_bar_share": 0.011
+  },
+  {
+   "year": 2022,
+   "days": 237,
+   "median_bars": 276.0,
+   "excluded_days": 1,
+   "gap_bars": 609,
+   "rolls_mid_session": 3,
+   "empty_bar_share": 0.0093
+  },
+  {
+   "year": 2023,
+   "days": 129,
+   "median_bars": 276.0,
+   "excluded_days": 1,
+   "gap_bars": 285,
+   "rolls_mid_session": 2,
+   "empty_bar_share": 0.008
+  }
+ ],
+ "targets": {
+  "all bars": 243984,
+  "minus first 3 bars of day": 241332,
+  "minus no return (gaps, rolls)": 237937,
+  "minus short days": 237183
+ },
+ "fx_coverage_min": 1.0,
+ "alignment_peak_offset": {
+  "EURUSD": 0,
+  "USDJPY": 0
+ }
+}

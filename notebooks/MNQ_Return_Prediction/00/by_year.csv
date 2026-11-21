@@ -1,0 +1,5 @@
+year,days,median_bars,excluded_days,gap_bars,rolls_mid_session,empty_bar_share
+2020,259,273.0,2,1306,4,0.0194
+2021,259,276.0,1,789,4,0.011
+2022,237,276.0,1,609,3,0.0093
+2023,129,276.0,1,285,2,0.008
