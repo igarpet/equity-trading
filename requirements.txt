@@ -17,3 +17,5 @@ databento>=0.60
 # torch==2.14.0
 # Gotobi_Tokyo_Fix: Japanese holiday calendar (GTF 001)
 jpholiday>=0.1.10
+# MNQ_Regime_Switching: EM kernels (RSW 001)
+numba>=0.60

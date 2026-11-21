@@ -7,3 +7,4 @@ __pycache__/
 notebooks/*/*_synthetic/
 .ipynb_checkpoints/
 notebooks/*/*/*_synthetic/
+notebooks/MNQ_Regime_Switching/01/*.pkl
