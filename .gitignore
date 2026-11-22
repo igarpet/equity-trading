@@ -10,3 +10,4 @@ notebooks/*/*/*_synthetic/
 notebooks/MNQ_Regime_Switching/01/*.pkl
 notebooks/MNQ_Regime_Switching/02/*.pkl
 notebooks/MNQ_Regime_Switching/03/*.pkl
+notebooks/MNQ_Regime_Switching/04/*.pkl
