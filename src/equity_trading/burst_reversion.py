@@ -10,6 +10,8 @@ Rules (Iván, 2026-11-22):
 * Stop loss, one of: none; beyond the burst extreme (+2 ticks); m x sigma_hat of the next bar (m = 1.5, 3);
   fixed 40 ticks.
 * One position at a time; flat by 15:55 Chicago and before a contract switch; a new burst does not close the trade.
+  A switch whose entry would fall at or after 15:55 Chicago (or whose next minute is in the next CME day) is not
+  traded: every trade opens and closes inside one CME session, never across the daily break or a weekend.
 
 Fills on 1-minute bars (MRP 04 conventions): market and stop fills pay 0.5 tick; a stop gapped through fills at the
 minute's open; commission per side. Everything in ticks per contract (1 tick = 0.25 points = $0.50).
@@ -24,7 +26,7 @@ import pandas as pd
 
 from . import trail_strategy as T
 
-BR_VERSION = "0.1.0"
+BR_VERSION = "0.1.1"   # 0.1.1: no entry when the next minute is past 15:55 Chicago or in another CME day (0.1.0 carried those across the daily break)
 TICK = 0.25
 USD_PER_TICK = 0.50
 
@@ -126,11 +128,15 @@ def simulate(M: T.Minutes, ev: pd.DataFrame, grid_index: pd.DatetimeIndex, kind:
     """Non-overlapping trades for one stop rule. ``sides`` overrides the direction (placebo / mirror)."""
     out = []
     free_from = -1
+    skipped = 0
     n_rows = len(grid_index)
     for k, e in enumerate(ev.itertuples(index=False)):
         side = int(sides[k]) if sides is not None else int(e.side)
         i0 = _first_min(M, e.entry_ts + pd.Timedelta(minutes=5))      # first minute after the entry bar
         if i0 <= free_from or i0 >= len(M.ts):
+            continue
+        if M.day[i0] != e.trade_date or M.stop_at[i0] <= i0:
+            skipped += 1                                                 # entry at/after the flat time: no trade
             continue
         entry = e.close5 + side * rc.slip * TICK
         lo, hi = burst_range(M, e.ts_start, e.ts_last_burst)
@@ -164,7 +170,9 @@ def simulate(M: T.Minutes, ev: pd.DataFrame, grid_index: pd.DatetimeIndex, kind:
                     "hold_bars": e.hold_bars, "exit_ts": M.ts[i], "reason": reason, "gross_ticks": gross,
                     "net_ticks": net, "minutes_held": i - i0 + 1})
         free_from = i
-    return pd.DataFrame(out)
+    df = pd.DataFrame(out)
+    df.attrs["skipped_session_end"] = skipped
+    return df
 
 
 def stats_for(tr: pd.DataFrame, periods: dict) -> dict:

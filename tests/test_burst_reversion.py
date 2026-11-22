@@ -69,3 +69,22 @@ def test_no_overlap_and_mirror():
     assert len(tr) == 1
     mir = B.simulate(M, ev, s.index, "none", RC, sides=-ev["side"].to_numpy())
     assert mir.loc[0, "side"] == -1
+
+
+def test_no_trade_across_the_daily_break():
+    idx = pd.date_range("2024-03-05 21:25", periods=7, freq="5min", tz="UTC")       # 15:25-15:55 Chicago
+    idx2 = pd.date_range("2024-03-05 23:00", periods=20, freq="5min", tz="UTC")     # next CME day from 17:00
+    ix = idx.append(idx2)
+    close = np.r_[18000, 18000, 18000, 18000, 17980, 17960, 17960, np.full(20, 18100.0)]
+    td = [pd.Timestamp("2024-03-05").date()] * 7 + [pd.Timestamp("2024-03-06").date()] * 20
+    s = pd.DataFrame({"close": close, "trade_date": td, "slot": [268 + i for i in range(7)] + list(range(20)),
+                      "obs": True, "sig2": (5 / 18000) ** 2, "iid": 1}, index=ix)
+    pb = np.zeros(len(s))
+    pb[4:6] = 0.9                                   # switch on the 15:55-16:00 bar
+    mts = ix.repeat(5) + pd.to_timedelta(np.tile(np.arange(5), len(ix)), unit="min")
+    c1 = np.repeat(close, 5)
+    m1 = pd.DataFrame({"open": c1, "high": c1, "low": c1, "close": c1, "volume": 1, "instrument_id": 1}, index=mts)
+    M = T.minutes_from_1m(m1, T.TrailConfig())
+    ev = B.episodes(s, pb, np.full(len(s), 10), RC)
+    tr = B.simulate(M, ev, s.index, "none", RC)
+    assert len(ev) == 1 and len(tr) == 0 and tr.attrs["skipped_session_end"] == 1

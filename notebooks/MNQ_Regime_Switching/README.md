@@ -4,7 +4,7 @@
 
 The model is a regime-switching OU discretized on returns: a Markov-switching AR(1) on z. Optionally, the previous bar's order flow (BVC imbalance and volume surprise from the 1-minute bars) drives the transition probabilities. Micro contracts only. Ticks per contract.
 
-Protocols: RSW 01 [`001`](../../discussions/MNQ_Regime_Switching/001_claude_rsw01_preregistration.md) (readout [`002`](../../discussions/MNQ_Regime_Switching/002_claude_rsw01_readout.md)); RSW 02 [`003`](../../discussions/MNQ_Regime_Switching/003_claude_rsw02_hawkes_pot_preregistration.md) (readout [`004`](../../discussions/MNQ_Regime_Switching/004_claude_rsw02_readout.md)); RSW 03 [`005`](../../discussions/MNQ_Regime_Switching/005_claude_rsw03_duration_preregistration.md) (readout [`006`](../../discussions/MNQ_Regime_Switching/006_claude_rsw03_readout.md)); RSW 04 [`007`](../../discussions/MNQ_Regime_Switching/007_claude_rsw04_burst_reversion_preregistration.md).
+Protocols: RSW 01 [`001`](../../discussions/MNQ_Regime_Switching/001_claude_rsw01_preregistration.md) (readout [`002`](../../discussions/MNQ_Regime_Switching/002_claude_rsw01_readout.md)); RSW 02 [`003`](../../discussions/MNQ_Regime_Switching/003_claude_rsw02_hawkes_pot_preregistration.md) (readout [`004`](../../discussions/MNQ_Regime_Switching/004_claude_rsw02_readout.md)); RSW 03 [`005`](../../discussions/MNQ_Regime_Switching/005_claude_rsw03_duration_preregistration.md) (readout [`006`](../../discussions/MNQ_Regime_Switching/006_claude_rsw03_readout.md)); RSW 04 [`007`](../../discussions/MNQ_Regime_Switching/007_claude_rsw04_burst_reversion_preregistration.md) (readout [`008`](../../discussions/MNQ_Regime_Switching/008_claude_rsw04_readout.md)); RSW 05 [`009`](../../discussions/MNQ_Regime_Switching/009_claude_rsw05_burst_entry_preregistration.md).
 
 Discovery runs on the training window 2020-01 – 2023-06, with walk-forward out-of-sample evaluation 2021-01 – 2023-06. The 2023-07 – 2025-12 window was used by MRP 03. A candidate is confirmed only on the sealed 2026 holdout.
 
@@ -14,6 +14,7 @@ Discovery runs on the training window 2020-01 – 2023-06, with walk-forward out
 | `02_hawkes_pot` | RSW 02: Hawkes vs Markov for \|z\| exceedances (u = 0.96 quantile): decay of clustering against the binary chain and simulated M1/M2 (H1); walk-forward next-bar exceedance forecast, Hawkes (geometric, marked, power-law kernels) vs MC/M1/M2 (H2); branching-ratio stability (H3); GPD sizes vs intensity | `02/` |
 | `03_duration` | RSW 03: does regime age matter? (A) model-free exceedance hazard by bars since the last one vs chain/M1/M2; (B) HSMM (Weibull / negative-binomial durations) vs HMM, out-of-sample density and exceedance forecast; (C) age-drift HSMM, direction R4 and one-bar trade E | `03/` |
 | `04_burst_reversion` | RSW 04: enter against the burst at the switch back to calm (M1 HMM, WB2 HSMM), time stop at mean calm duration + 5 bars, 5 stop losses; 1-minute fills, random-direction placebo, mirror | `04/` |
+| `05_burst_entry` | RSW 05: volatility and regime models (M1, WB2) refitted on 1-minute bars; enter at the first burst minute, with or against it; time stop mean burst duration + 5 minutes; 5 stops; 20 strategies; monthly data coverage | `05/` |
 
 **Data.** Only the MNQ `ohlcv-1m` already downloaded for MRP (`tools/databento/micro_bars_download.py`); nothing to buy.
 
@@ -56,5 +57,12 @@ Readout: [`006`](../../discussions/MNQ_Regime_Switching/006_claude_rsw03_readout
 - B: the HSMM improves the density only (HB2 fails); every duration shape is below 1.
 - C: the age drift is real in sample, but R4 and E fail.
 
-**RSW 04** (burst reversion, [`007`](../../discussions/MNQ_Regime_Switching/007_claude_rsw04_burst_reversion_preregistration.md)): code ready, not run.
-- Run `python -m pytest -q tests/test_burst_reversion.py`, then `04`.
+## Result RSW 04 (run `2e702f3`): no edge
+
+Readout: [`008`](../../discussions/MNQ_Regime_Switching/008_claude_rsw04_readout.md).
+- Gross about 0 for reversion, mirror and random direction alike; net −1 to −3 ticks per trade.
+- Engine 0.1.1 fixes trades carried across the daily break; a rerun is pending.
+- Trades stop from mid-May to early July 2022: check for missing data.
+
+**RSW 05** (1-minute burst entry, [`009`](../../discussions/MNQ_Regime_Switching/009_claude_rsw05_burst_entry_preregistration.md)): code ready, not run.
+- Run `python -m pytest -q tests/test_burst_entry.py`, then `05`.

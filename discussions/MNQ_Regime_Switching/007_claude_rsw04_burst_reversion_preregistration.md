@@ -44,6 +44,7 @@ Fits are made before 2021-01-01, 2022-01-01 and 2023-01-01, expanding from 2020-
 - One position at a time.
 - A new burst during a trade does not close it.
 - Flat by 15:55 Chicago and before any contract switch.
+- **Amendment 2026-11-22 (engine 0.1.1, bug fix after run `2e702f3`).** A switch on the last bar of the CME day (15:55–16:00 Chicago) entered at that bar's close. Engine 0.1.0 then simulated from the next existing minute, the next session's 17:00 open (or Sunday), so those trades carried across the daily break with the gap. From 0.1.1 a switch whose next minute is at or after 15:55 Chicago, or in another CME day, is not traded. The notebook prints how many were skipped. Run `2e702f3` is superseded; the gates are unchanged.
 
 **Fills** (1-minute bars, MRP 04 conventions):
 - market and stop fills pay 0.5 tick;
