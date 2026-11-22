@@ -14,6 +14,7 @@ Discovery runs on the training window 2020-01 – 2023-06, with walk-forward out
 | `02_hawkes_pot` | RSW 02: Hawkes vs Markov for \|z\| exceedances (u = 0.96 quantile): decay of clustering against the binary chain and simulated M1/M2 (H1); walk-forward next-bar exceedance forecast, Hawkes (geometric, marked, power-law kernels) vs MC/M1/M2 (H2); branching-ratio stability (H3); GPD sizes vs intensity | `02/` |
 | `03_duration` | RSW 03: does regime age matter? (A) model-free exceedance hazard by bars since the last one vs chain/M1/M2; (B) HSMM (Weibull / negative-binomial durations) vs HMM, out-of-sample density and exceedance forecast; (C) age-drift HSMM, direction R4 and one-bar trade E | `03/` |
 | `04_burst_reversion` | RSW 04: enter against the burst at the switch back to calm (M1 HMM, WB2 HSMM), time stop at mean calm duration + 5 bars, 5 stop losses; 1-minute fills, random-direction placebo, mirror | `04/` |
+| `04b_burst_reversion_full` | RSW 04 frozen rules (engine 0.1.1) extended to 2021-01 – 2025-12, yearly refits; gates on the original window, on 2023-07 – 2025-12 and on all (a check, not a new discovery) | `04b/` |
 | `05_burst_entry` | RSW 05: volatility and regime models (M1, WB2) refitted on 1-minute bars; enter at the first burst minute, with or against it; time stop mean burst duration + 5 minutes; 5 stops; 20 strategies; monthly data coverage | `05/` |
 
 **Data.** Only the MNQ `ohlcv-1m` already downloaded for MRP (`tools/databento/micro_bars_download.py`); nothing to buy.

@@ -87,3 +87,22 @@ A strategy passing G1–G4 goes to a 2026-holdout pre-registration (one strategy
 2. `notebooks/MNQ_Regime_Switching/04_burst_reversion.ipynb`
 
 Fits are cached in `04/fits_<version>.pkl`.
+
+## 7. Extension to 2025-12 (Iván, 2026-11-22; written before the extended run)
+
+The rules are frozen (engine 0.1.1, with the daily-break fix). Run them on **2021-01 – 2025-12**:
+- regime fits (M1, WB2) refitted before every year from 2021 to 2025, expanding from 2020-01-01;
+- volatility walk-forward with the same refit dates.
+
+Results are reported on three windows:
+- **original**: 2021-01 – 2023-06;
+- **new**: 2023-07 – 2025-12, the MRP test window, used before only by MRP 03;
+- **all**.
+
+Each window gets net, t and Holm across the 10 strategies.
+
+**Status.** This is a check. Discovery already failed, so a pass on the new window would not make a strategy a candidate on its own merits. It would need its own pre-registration and the 2026 holdout. The original window will differ slightly from run `2e702f3` because of the fix, and because 2023's regime fits now come from the same yearly schedule.
+
+**Data.** June 2022 is almost empty (1 day, 120 minutes; RSW 05 coverage table) until it is re-downloaded.
+
+**Run:** `notebooks/MNQ_Regime_Switching/04b_burst_reversion_full.ipynb`, output `04b/`.
