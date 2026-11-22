@@ -37,7 +37,7 @@ import pandas as pd
 
 from .data import vendor_dir
 
-EDGAR_VERSION = "0.1.0"
+EDGAR_VERSION = "0.1.1"
 
 COMPANYFACTS_URL = "https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip"
 SUBMISSIONS_URL = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip"
@@ -117,7 +117,10 @@ def download_file(url: str, dest: Path, session=None, retries: int = 4, chunk: i
                 if r.status_code == 404:
                     raise FileNotFoundError(url)
                 r.raise_for_status()
-                total = int(r.headers.get("Content-Length", 0))
+                # Content-Length is the size on the wire: with gzip/deflate encoding requests decompresses
+                # while streaming, so the byte count can only be checked for unencoded transfers.
+                encoded = r.headers.get("Content-Encoding", "identity").lower() not in ("", "identity")
+                total = 0 if encoded else int(r.headers.get("Content-Length", 0))
                 done = 0
                 with open(part, "wb") as f:
                     for b in r.iter_content(chunk):
