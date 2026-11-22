@@ -4,7 +4,7 @@
 
 The model is a regime-switching OU discretized on returns: a Markov-switching AR(1) on z. Optionally, the previous bar's order flow (BVC imbalance and volume surprise from the 1-minute bars) drives the transition probabilities. Micro contracts only. Ticks per contract.
 
-Protocols: RSW 01 [`001`](../../discussions/MNQ_Regime_Switching/001_claude_rsw01_preregistration.md) (readout [`002`](../../discussions/MNQ_Regime_Switching/002_claude_rsw01_readout.md)); RSW 02 [`003`](../../discussions/MNQ_Regime_Switching/003_claude_rsw02_hawkes_pot_preregistration.md).
+Protocols: RSW 01 [`001`](../../discussions/MNQ_Regime_Switching/001_claude_rsw01_preregistration.md) (readout [`002`](../../discussions/MNQ_Regime_Switching/002_claude_rsw01_readout.md)); RSW 02 [`003`](../../discussions/MNQ_Regime_Switching/003_claude_rsw02_hawkes_pot_preregistration.md) (readout [`004`](../../discussions/MNQ_Regime_Switching/004_claude_rsw02_readout.md)); RSW 03 [`005`](../../discussions/MNQ_Regime_Switching/005_claude_rsw03_duration_preregistration.md).
 
 Discovery runs on the training window 2020-01 – 2023-06, with walk-forward out-of-sample evaluation 2021-01 – 2023-06. The 2023-07 – 2025-12 window was used by MRP 03. A candidate is confirmed only on the sealed 2026 holdout.
 
@@ -12,6 +12,7 @@ Discovery runs on the training window 2020-01 – 2023-06, with walk-forward out
 |---|---|---|
 | `01_msar_discovery` | M0 (AR(1)), M1/M2 (2/3 states), M3/M4 (2/3 states, flow-driven transitions); expanding fits before 2021, 2022 and 2023; gates R1–R4 and E; regimes by session, year and σ̂ quintile; sample-week plot | `01/` |
 | `02_hawkes_pot` | RSW 02: Hawkes vs Markov for \|z\| exceedances (u = 0.96 quantile): decay of clustering against the binary chain and simulated M1/M2 (H1); walk-forward next-bar exceedance forecast, Hawkes (geometric, marked, power-law kernels) vs MC/M1/M2 (H2); branching-ratio stability (H3); GPD sizes vs intensity | `02/` |
+| `03_duration` | RSW 03: does regime age matter? (A) model-free exceedance hazard by bars since the last one vs chain/M1/M2; (B) HSMM (Weibull / negative-binomial durations) vs HMM, out-of-sample density and exceedance forecast; (C) age-drift HSMM, direction R4 and one-bar trade E | `03/` |
 
 **Data.** Only the MNQ `ohlcv-1m` already downloaded for MRP (`tools/databento/micro_bars_download.py`); nothing to buy.
 
@@ -38,7 +39,16 @@ Readout: [`002`](../../discussions/MNQ_Regime_Switching/002_claude_rsw01_readout
 - Trading every bar: gross +0.33 ticks per bar, about a tenth of the cost.
 - The notebook's verdict labels for M1, M2 and M4 are wrong: they fail R3, not R2.
 
-**RSW 02** (Hawkes vs Markov, [`003`](../../discussions/MNQ_Regime_Switching/003_claude_rsw02_hawkes_pot_preregistration.md)): code ready, not run.
-- Run `python -m pytest -q tests/test_hawkes.py`, then `02`.
-- Fits are cached in `02/fits_<version>.pkl`.
-- Expect about 20–40 minutes: each threshold refits M1/M2 three times.
+## Result RSW 02 (run `b808aef`): Markov regimes suffice
+
+Readout: [`004`](../../discussions/MNQ_Regime_Switching/004_claude_rsw02_readout.md).
+- H1 passes at u(0.96) only.
+- H2 fails: Hawkes beats the chain but loses to M1 and M2 (t −3.7 to −7.9).
+- Branching ratio n ≈ 0.11–0.23, half-life about 2 bars.
+- Sizes are heavy-tailed (ξ ≈ 0.2–0.28) and grow with intensity (κ ≈ 0.4).
+- Clustered extremes keep their sign 59.5% of the time (descriptive).
+
+**RSW 03** (duration dependence, [`005`](../../discussions/MNQ_Regime_Switching/005_claude_rsw03_duration_preregistration.md)): code ready, not run.
+- Run `python -m pytest -q tests/test_hsmm.py`, then `03`.
+- Fits are cached one by one, so an interrupted run resumes.
+- Expect 45–90 minutes.
