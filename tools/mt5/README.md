@@ -53,6 +53,16 @@ How to read these numbers:
 | Days with < 80% minute coverage dropped | Dec 25 and Jan 1 labels skipped (`InpSkipHolidays`) |
 | Costs: Dukascopy spread × 0.9 + $3/lot RT | The broker's real spread and commission |
 
+**Longer holds.** `InpExtraHoldMin` adds minutes to every signal's hold; the default is 0, as studied. `InpCapAtRollover` (on by default) never holds past 16:58 New York. Without it, the four signals that end at 16:55 NY would cross the daily rollover (swap, spread spike), and on Fridays the weekend close.
+
+The holding-time study (03g, net pips per trade) says longer holds cost money:
+
+| Signal | Period | As studied | +60 min |
+|---|---|---|---|
+| EURUSD-02 | 2021–2025 | +1.54 (t 2.6) | +0.57 (t 0.7) |
+| USDJPY-01 | 2021–2025 | +0.97 (t 1.9) | +0.37 (t 0.6) |
+| USDJPY-02 | 2021–2025 | +0.81 (t 2.1) | −1.12 (t −1.8) |
+
 **Account type.** The EA needs a **hedging** account, because USDJPY-01 and N-UJ-1 hold the same symbol at the same time. Each signal has its own magic number (`InpMagicBase + index`), and positions are closed per magic.
 
 **Not in the EA:** HMM sizing (13/13b). It needs daily Python-fitted states, and the best HMM result (13b) is in-sample. `InpMultipliers` takes fixed per-signal multipliers.
