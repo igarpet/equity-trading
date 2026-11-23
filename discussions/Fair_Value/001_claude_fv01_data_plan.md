@@ -6,7 +6,7 @@
 | **Date** | 2026-11-22 |
 | **Branch** | Fair_Value |
 | **Responds to** | Iván, 2026-11-22: move from short-term signals to long-term fair value. Automated DCF on stocks, fair value updated at every filing, trade when price is ≥ 20% below fair value (stock, and synthetic options to test feasibility). Own the pipeline, free data only: SEC EDGAR for fundamentals, Yahoo for prices. No index-constituent universe: a broad universe filtered by enterprise value, excluding the mega caps. |
-| **Engine** | `edgar.py` 0.1.1, `daily_prices.py` 0.1.0 |
+| **Engine** | `edgar.py` 0.1.2, `daily_prices.py` 0.1.0 |
 | **Status** | Data plan and coverage check. No signal, no returns. |
 
 ## 1. Window

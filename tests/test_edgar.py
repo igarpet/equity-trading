@@ -126,3 +126,8 @@ def test_split_download():
     d.loc[:, ("BBB", slice(None))] = float("nan")
     out = split_download(d, ["AAA", "BBB", "CCC"])
     assert list(out) == ["AAA"] and "Dividends" in out["AAA"].columns
+
+
+def test_fiscal_year_out_of_range():
+    out = E._fiscal_year(pd.Series([2020, 20151, 2019.5, None, "2018", -1]))
+    assert out.tolist()[:1] == [2020] and out.isna().tolist() == [False, True, True, True, False, True]

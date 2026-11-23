@@ -37,7 +37,7 @@ import pandas as pd
 
 from .data import vendor_dir
 
-EDGAR_VERSION = "0.1.1"
+EDGAR_VERSION = "0.1.2"
 
 COMPANYFACTS_URL = "https://www.sec.gov/Archives/edgar/daily-index/xbrl/companyfacts.zip"
 SUBMISSIONS_URL = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip"
@@ -224,7 +224,7 @@ def read_fsds_sub(f) -> pd.DataFrame:
     sub["filed"] = pd.to_datetime(sub["filed"], format="%Y%m%d", errors="coerce")
     sub["period"] = pd.to_datetime(sub["period"], format="%Y%m%d", errors="coerce")
     sub["accepted"] = pd.to_datetime(sub["accepted"], errors="coerce")
-    sub["fy"] = pd.to_numeric(sub["fy"], errors="coerce").astype("Int16")
+    sub["fy"] = _fiscal_year(sub["fy"])
     sub["prevrpt"] = sub["prevrpt"].eq("1")
     sub["accn"] = sub.pop("adsh")
     return sub
@@ -261,13 +261,20 @@ def facts_rows(doc: dict, forms=FACT_FORMS, taxonomies=FACT_TAXONOMIES) -> dict[
     return cols
 
 
+def _fiscal_year(x: pd.Series) -> pd.Series:
+    """Filer-reported fiscal year as Int16; typos outside 1900-2100 (e.g. 20151) and non-integers -> NA."""
+    v = pd.to_numeric(x, errors="coerce")
+    ok = v.between(1900, 2100) & (v == np.floor(v))
+    return v.where(ok).astype("Int16")
+
+
 def _facts_frame(cols: dict[str, list]) -> pd.DataFrame:
     df = pd.DataFrame(cols, columns=FACT_COLUMNS)
     df["cik"] = df["cik"].astype("int64")
     for c in ("start", "end", "filed"):
         df[c] = pd.to_datetime(df[c], format="%Y-%m-%d", errors="coerce")
     df["val"] = pd.to_numeric(df["val"], errors="coerce").astype("float64")
-    df["fy"] = pd.to_numeric(df["fy"], errors="coerce").astype("Int16")
+    df["fy"] = _fiscal_year(df["fy"])
     for c in ("taxonomy", "tag", "unit", "fp", "form"):
         df[c] = df[c].astype("category")
     df["accn"] = df["accn"].astype("string")
