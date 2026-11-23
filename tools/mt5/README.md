@@ -53,7 +53,7 @@ How to read these numbers:
 | Days with < 80% minute coverage dropped | Dec 25 and Jan 1 labels skipped (`InpSkipHolidays`) |
 | Costs: Dukascopy spread × 0.9 + $3/lot RT | The broker's real spread and commission |
 
-**Longer holds.** `InpExtraHoldMin` adds minutes to every signal's hold; the default is 0, as studied. `InpCapAtRollover` (on by default) never holds past 16:58 New York. Without it, the four signals that end at 16:55 NY would cross the daily rollover (swap, spread spike), and on Fridays the weekend close.
+**Longer holds.** `InpExtraHoldMin` adds minutes to every signal's hold; negative values shorten it, and the default is 0, as studied. A signal whose hold drops below 1 minute is not traded: N-EU-1 and N-UJ-1 hold 15 min, USDJPY-02 30 min. `InpCapAtRollover` (on by default) never holds past 16:58 New York. Without it, the four signals that end at 16:55 NY would cross the daily rollover (swap, spread spike), and on Fridays the weekend close.
 
 The holding-time study (03g, net pips per trade) says longer holds cost money:
 

@@ -2,10 +2,10 @@
 //| FXSeasonalityEA.mq5                                              |
 //| FX intraday seasonality portfolio (FXS 09/10): 12 time-of-day    |
 //| signals, time entry and time exit, every trading day.            |
-//| Repo: igarpet/equity-trading, tools/mt5. Version 0.2.0           |
+//| Repo: igarpet/equity-trading, tools/mt5. Version 0.2.1           |
 //+------------------------------------------------------------------+
 #property copyright "equity-trading"
-#property version   "0.20"
+#property version   "0.21"
 #property description "12-signal FX time-of-day portfolio (FXS 09/10). Hedging account required."
 
 #include <Trade/Trade.mqh>
@@ -49,7 +49,7 @@ input string            InpSymbolPrefix     = "";
 input string            InpSymbolSuffix     = "";   // e.g. ".r" if the broker uses suffixes
 
 input group "Execution"
-input int    InpExtraHoldMin     = 0;     // Extra minutes added to every signal's hold (0 = as studied)
+input int    InpExtraHoldMin     = 0;     // Minutes added to every hold, negative shortens (0 = as studied)
 input bool   InpCapAtRollover    = true;  // Never hold past 16:58 New York (rollover, swap, Friday close)
 input int    InpMaxEntryDelaySec = 60;    // Skip the entry if it cannot be sent within this many seconds
 input double InpMaxSpreadPips    = 0.0;   // Skip entry if spread is wider (0 = off)
@@ -486,16 +486,23 @@ void Step()
          double spr = (SymbolInfoDouble(S[i].sym, SYMBOL_ASK) - SymbolInfoDouble(S[i].sym, SYMBOL_BID)) / PipSize(S[i].sym);
          if(spr > InpMaxSpreadPips) continue;          // retried until the entry window closes
         }
+      int hold = (S[i].end_min - S[i].start_min + InpExtraHoldMin) * 60;
+      if(InpCapAtRollover)
+        {
+         datetime nyc = NyClock(utc - (clk - entry_clk));          // entry on the NY clock
+         int cap = (int)(DayStart(nyc) + 1438 * 60 - nyc);          // seconds to 16:58 New York
+         if(hold > cap) hold = cap;
+        }
+      if(hold < 60)                                                 // negative extra hold shortened it to nothing
+        {
+         if(S[i].trades == 0 && S[i].last_label == 0)
+            PrintFormat("%s: hold %d s after InpExtraHoldMin, signal not traded", S[i].id, hold);
+         S[i].last_label = label;
+         continue;
+        }
       if(OpenSignal(i))
         {
          S[i].last_label = label;
-         int hold = (S[i].end_min - S[i].start_min + InpExtraHoldMin) * 60;
-         if(InpCapAtRollover)
-           {
-            datetime nyc = NyClock(utc - (clk - entry_clk));          // entry on the NY clock
-            int cap = (int)(DayStart(nyc) + 1438 * 60 - nyc);          // seconds to 16:58 New York
-            if(hold > cap) hold = cap;
-           }
          S[i].exit_at = srv - (clk - entry_clk) + hold;
          GlobalVariableSet(GvName(i), (double)S[i].exit_at);
         }
@@ -551,7 +558,7 @@ int OnInit()
    string on = "";
    for(int i = 0; i < 12; i++)
       if(S[i].on) on += StringFormat("%s(x%.2f%s) ", S[i].id, S[i].mult, S[i].gotobi == 1 ? ",G" : (S[i].gotobi == 2 ? ",O" : ""));
-   PrintFormat("FXSeasonalityEA 0.2.0: L=%.1f, extra hold %d min, signals: %s", InpLeverage, InpExtraHoldMin, on);
+   PrintFormat("FXSeasonalityEA 0.2.1: L=%.1f, extra hold %d min, signals: %s", InpLeverage, InpExtraHoldMin, on);
    EventSetTimer(1);
    return INIT_SUCCEEDED;
   }
