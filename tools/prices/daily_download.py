@@ -7,7 +7,8 @@ live and delisted. No size filter here: enterprise-value filters are applied poi
 
   python tools/prices/daily_download.py --source yahoo            # unadjusted OHLCV + actions, 2008 -> 2025
   python tools/prices/daily_download.py --source alpaca           # Alpaca 1Day SIP bars 2016 -> 2025 (adjusted)
-  python tools/prices/daily_download.py --source yahoo --retry-missing
+  python tools/prices/daily_download.py --source yahoo --retry-missing   # re-ask symbols recorded missing
+  Rate limits: rate-limited symbols are not recorded; the run sleeps 15 -> 60 min and retries the batch.
   python tools/prices/daily_download.py --list-only               # write the symbol list and stop
 """
 from __future__ import annotations
@@ -43,6 +44,8 @@ def main() -> int:
     p.add_argument("--start", default="2008-01-01")
     p.add_argument("--retry-missing", action="store_true")
     p.add_argument("--list-only", action="store_true")
+    p.add_argument("--batch", type=int, default=20, help="Yahoo symbols per request batch")
+    p.add_argument("--pause", type=float, default=5.0, help="seconds between Yahoo batches")
     a = p.parse_args()
     syms = symbol_list(a.since)
     print(f"{len(syms):,} symbols ({(syms['n_ciks'] > 1).sum():,} shared by more than one CIK over time)")
@@ -50,7 +53,7 @@ def main() -> int:
         return 0
     if a.source == "yahoo":
         log = P.download_yahoo(syms["yahoo"].tolist(), start=a.start, end="2026-01-01",
-                               retry_missing=a.retry_missing)
+                               batch=a.batch, pause=a.pause, retry_missing=a.retry_missing)
         if len(log):
             print(log["status"].value_counts().to_string())
     else:

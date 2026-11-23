@@ -5,6 +5,7 @@ plan SIP queries must end at least 15 minutes in the past; this module only
 requests whole past calendar years or explicit past end dates.
 
 Cache layout: <EQUITY_TRADING_DIR>/Alpaca/bars/<timeframe>/<SYMBOL>/<YEAR>.parquet
+(Windows-reserved symbols such as CON use CON_/; see data.safe_name)
 (all bars Alpaca returns, extended hours included, UTC bar-start timestamps).
 A year file is written only after the full year was downloaded, so an
 interrupted run resumes cleanly. The current year is never cached as complete.
@@ -18,9 +19,9 @@ from datetime import date
 import numpy as np
 import pandas as pd
 
-from .data import NY, vendor_dir
+from .data import NY, safe_name, vendor_dir
 
-ALPACA_VERSION = "0.3.0"
+ALPACA_VERSION = "0.3.1"
 BASE_URL = "https://data.alpaca.markets/v2/stocks/bars"
 MAX_CALLS_PER_MIN = 180  # free plan limit is 200
 
@@ -111,7 +112,7 @@ def _download_chunk(chunk: list[str], timeframe: str, y: int) -> int:
     got = fetch_bars(chunk, timeframe, f"{y}-01-01", f"{y + 1}-01-01", session=requests.Session())
     n = 0
     for s in chunk:
-        p = _cache_dir(timeframe) / s
+        p = _cache_dir(timeframe) / safe_name(s)
         p.mkdir(parents=True, exist_ok=True)
         df = got.get(s, pd.DataFrame(columns=["t"]))
         tmp = p / f"{y}.parquet.tmp"
@@ -132,7 +133,7 @@ def download_years(symbols: list[str], timeframe: str, years: list[int], batch: 
         raise ValueError(f"{bad} not complete past years; download_years only caches complete years.")
     tasks = []
     for y in years:
-        todo = [s for s in symbols if not (_cache_dir(timeframe) / s / f"{y}.parquet").exists()]
+        todo = [s for s in symbols if not (_cache_dir(timeframe) / safe_name(s) / f"{y}.parquet").exists()]
         tasks += [(todo[i:i + batch], y) for i in range(0, len(todo), batch)]
     if verbose:
         print(f"{timeframe}: {len(tasks)} batches to download ({sum(len(c) for c, _ in tasks)} symbol-years), "
@@ -154,7 +155,7 @@ def download_years(symbols: list[str], timeframe: str, years: list[int], batch: 
 def load_bars(symbol: str, timeframe: str, years: list[int]) -> pd.DataFrame:
     parts = []
     for y in years:
-        p = _cache_dir(timeframe) / symbol / f"{y}.parquet"
+        p = _cache_dir(timeframe) / safe_name(symbol) / f"{y}.parquet"
         if not p.exists():
             raise FileNotFoundError(f"{p} missing; run download_years first.")
         parts.append(pd.read_parquet(p))

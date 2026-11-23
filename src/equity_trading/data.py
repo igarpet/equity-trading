@@ -33,6 +33,16 @@ def data_dir() -> Path:
     return d
 
 
+_WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
+                     *(f"LPT{i}" for i in range(1, 10))}
+
+
+def safe_name(symbol: str) -> str:
+    """File/folder name for a symbol: Windows reserves CON, PRN, AUX, NUL, COM1-9 and LPT1-9 (also with an
+    extension), so those get a trailing underscore (CON -> CON_). All other symbols are unchanged."""
+    return f"{symbol}_" if symbol.split(".")[0].upper() in _WINDOWS_RESERVED else symbol
+
+
 def vendor_dir(vendor: str) -> Path:
     """<EQUITY_TRADING_DIR>/<Vendor>, e.g. Alpaca, Yahoo."""
     d = data_dir() / vendor

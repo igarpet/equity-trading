@@ -131,3 +131,42 @@ def test_split_download():
 def test_fiscal_year_out_of_range():
     out = E._fiscal_year(pd.Series([2020, 20151, 2019.5, None, "2018", -1]))
     assert out.tolist()[:1] == [2020] and out.isna().tolist() == [False, True, True, True, False, True]
+
+
+def test_safe_name():
+    from equity_trading.data import safe_name
+    assert safe_name("CON") == "CON_" and safe_name("LPT1") == "LPT1_" and safe_name("COM") == "COM"
+    assert safe_name("AAPL") == "AAPL" and safe_name("CONX") == "CONX"
+
+
+def test_yahoo_rate_limit_not_recorded(edgar_root, monkeypatch):
+    """Rate-limited symbols must be retried, never recorded as 'missing'."""
+    import logging
+    import types
+    from equity_trading import daily_prices as P
+
+    calls = {"n": 0}
+
+    def fake_download(chunk, **kw):
+        calls["n"] += 1
+        idx = pd.date_range("2020-01-01", periods=2)
+        cols = pd.MultiIndex.from_product([chunk, ["Open", "High", "Low", "Close", "Volume"]])
+        d = pd.DataFrame(float("nan"), index=idx, columns=cols)
+        if calls["n"] == 1:  # first call: AAA served, the rest rate-limited
+            d.loc[:, ("AAA", slice(None))] = 1.0
+            logging.getLogger("yfinance").error(
+                "['BBB', 'CON']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')")
+        else:                # retry: BBB and CON served, ZZZ genuinely missing
+            for s in ("BBB", "CON"):
+                if s in chunk:
+                    d.loc[:, (s, slice(None))] = 2.0
+            logging.getLogger("yfinance").error("['ZZZ']: possibly delisted; no timezone found")
+        return d
+
+    monkeypatch.setitem(sys.modules, "yfinance", types.SimpleNamespace(download=fake_download))
+    monkeypatch.setattr(P.time, "sleep", lambda s: None)
+    P.download_yahoo(["AAA", "BBB", "CON", "ZZZ"], batch=4, pause=0)
+    st = P.load_status().set_index("symbol")["status"].to_dict()
+    assert st == {"AAA": "ok", "BBB": "ok", "CON": "ok", "ZZZ": "missing"}
+    assert (P.yahoo_dir() / "CON_.parquet").exists() and P.load_yahoo("CON") is not None
+    assert calls["n"] == 2
