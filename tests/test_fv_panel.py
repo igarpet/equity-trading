@@ -117,3 +117,39 @@ def test_delisting_form_caps_window():
                            "first_delist_form": [T("2023-05-01")]})
     w = F.symbol_windows(th, status)
     assert w["w1"].iloc[0] == T("2023-05-31")
+
+
+def test_share_classes_summed_and_float_check():
+    f, fil = _facts()
+    extra = f[f["tag"] == "EntityCommonStockSharesOutstanding"].copy()
+    extra["val"] = 5.0                                   # class B, same filing and date
+    zero_float = f[f["tag"] == "EntityPublicFloat"].copy()
+    zero_float["val"] = 0.0                              # class B float (not traded)
+    f2 = pd.concat([f, extra, zero_float, extra], ignore_index=True)   # exact duplicate counted once
+    s = F.derive(pd.DataFrame(F.company_snapshots(f2, fil))).set_index("accn")
+    assert s.loc["Q223", "shares"] == 15 and s.loc["Q223", "public_float"] == 400
+    snap = s.reset_index()
+    a = pd.DataFrame({"cik": 1, "month_end": [T("2023-08-31")], "symbol": "XYZ", "close_raw": 100.0,
+                      "close_adj": 100.0, "dollar_vol_med": 1e6, "last_date": [T("2023-08-31")]})
+    prices = pd.DataFrame({"symbol": "XYZ", "month_end": [T("2022-06-30")], "close_raw": [40.0]})
+    comp = pd.DataFrame({"cik": [1], "sic": ["3571"], "name": ["X"]})
+    r = F.monthly_panel(snap, a, comp, prices=prices).iloc[0]
+    # float shares = 400 / 40 = 10; shares 15 -> ratio 1.5, fine even though mcap/float = 1500/400
+    assert r["shares_to_float"] == 1.5 and not r["mcap_suspect"]
+
+
+def test_diluted_shares_fallback_not_ttm():
+    f, fil = _facts()
+    f = f[f["tag"] != "EntityCommonStockSharesOutstanding"]
+    add = pd.DataFrame([{"cik": 1, "tag": "WeightedAverageNumberOfDilutedSharesOutstanding", "start": T(st),
+                         "end": T("2023-06-30"), "val": v, "accn": "Q223", "form": "10-Q",
+                         "filed": T("2023-08-04"), "accepted": T("2023-08-04 08:00")}
+                        for st, v in [("2023-04-01", 12.0), ("2023-01-01", 11.0)]])
+    s = F.derive(pd.DataFrame(F.company_snapshots(pd.concat([f, add]), fil))).set_index("accn")
+    assert s.loc["Q223", "shares"] == 12 and s.loc["Q223", "shares_source"] == "diluted_avg"
+
+
+def test_warrants_and_units_dropped():
+    th = pd.DataFrame({"cik": [1, 1, 1, 1, 2], "symbol": ["ZCAR", "ZCARW", "ZCAR.WS", "ZCARU", "ABCW"],
+                       "source": "current", "first_filed": T("2020-01-01"), "last_filed": T("2024-01-01")})
+    assert F.is_derivative_symbol(th).tolist() == [False, True, True, True, False]

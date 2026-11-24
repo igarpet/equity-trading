@@ -32,7 +32,7 @@ import pandas as pd
 from . import edgar as E
 from .data import safe_name, vendor_dir, work_dir
 
-FV_PANEL_VERSION = "0.1.0"
+FV_PANEL_VERSION = "0.1.1"
 
 DOMESTIC_FORMS = frozenset({"10-K", "10-K/A", "10-Q", "10-Q/A", "10-KT", "10-KT/A", "10-QT", "10-QT/A"})
 
@@ -59,7 +59,10 @@ FLOW_ITEMS: dict[str, list[str]] = {
     "sbc": ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"],
     "dividends": ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends"],
     "buybacks": ["PaymentsForRepurchaseOfCommonStock"],
-    "diluted_shares": ["WeightedAverageNumberOfDilutedSharesOutstanding"],
+}
+# Duration items that are not additive (no TTM): value of the shortest period ending at the period end.
+PERIOD_ITEMS: dict[str, list[str]] = {
+    "diluted_shares_q": ["WeightedAverageNumberOfDilutedSharesOutstanding", "WeightedAverageNumberOfSharesOutstandingBasic"],
 }
 STOCK_ITEMS: dict[str, list[str]] = {
     "cash": ["CashAndCashEquivalentsAtCarryingValue", "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
@@ -86,7 +89,7 @@ HISTORY_ITEMS = ["revenue", "operating_income", "net_income", "cfo", "capex", "d
 N_HISTORY = 5
 
 _TAG_ITEM: dict[str, tuple[str, int]] = {}
-for _items in (FLOW_ITEMS, STOCK_ITEMS):
+for _items in (FLOW_ITEMS, STOCK_ITEMS, PERIOD_ITEMS):
     for _it, _tags in _items.items():
         for _p, _t in enumerate(_tags):
             _TAG_ITEM[_t] = (_it, _p)
@@ -94,6 +97,7 @@ for _it, _t in DEI_ITEMS.items():
     _TAG_ITEM[_t] = (_it, 0)
 ALL_TAGS = sorted(_TAG_ITEM)
 
+DEI_TAGS = frozenset(DEI_ITEMS.values())
 DAY = np.timedelta64(1, "D")
 
 
@@ -219,6 +223,33 @@ def ttm(store: _ItemStore, period_end, tol: int = 10) -> float:
     return fy + ytd - prev
 
 
+def period_value(store: _ItemStore, period_end) -> float:
+    """Value of the shortest duration ending at period_end (±3 days): the latest quarter for 10-Qs."""
+    if store is None:
+        return np.nan
+    durs = []
+    for e in store.ends_near(period_end, 3):
+        durs += store.durations_at(e)
+    return min(durs, key=lambda x: x[0])[2] if durs else np.nan
+
+
+def combine_share_classes(facts: pd.DataFrame) -> pd.DataFrame:
+    """Sum cover-page dei values (shares outstanding, public float) reported per share class in one filing.
+
+    companyfacts strips the class dimension: a dual-class company (CRWD, GOOG) has several
+    EntityCommonStockSharesOutstanding rows with the same end date and accession. Without summing, the
+    last class read wins (often a class B with 0 or few shares). Exact duplicate rows are counted once.
+    """
+    dei = facts["tag"].astype(str).isin(DEI_TAGS)
+    if not dei.any():
+        return facts
+    d = facts[dei].drop_duplicates(["tag", "end", "accn", "val"])
+    keys = ["tag", "end", "accn"]
+    agg = d.groupby(keys, observed=True, as_index=False, dropna=False).agg(
+        val=("val", "sum"), **{c: (c, "first") for c in facts.columns if c not in keys + ["val"]})
+    return pd.concat([facts[~dei], agg[facts.columns]], ignore_index=True)
+
+
 def fy_history(store: _ItemStore, not_after, n: int = N_HISTORY) -> list[tuple]:
     """Last n fiscal years [(end, value)] with end <= not_after, latest first (ends at least 300 days apart)."""
     out = []
@@ -242,7 +273,7 @@ def company_snapshots(facts: pd.DataFrame, filings: pd.DataFrame) -> list[dict]:
     filings: that CIK's periodic domestic filings (accn, form, accepted, report_date)."""
     if facts.empty or filings.empty:
         return []
-    facts = facts.sort_values("accepted", kind="stable")
+    facts = combine_share_classes(facts).sort_values("accepted", kind="stable")
     stores: dict[str, _ItemStore] = {}
     f_acc = facts["accepted"].to_numpy()
     f_tag = facts["tag"].astype(str).to_numpy()
@@ -281,6 +312,8 @@ def company_snapshots(facts: pd.DataFrame, filings: pd.DataFrame) -> list[dict]:
         for it in STOCK_ITEMS:
             s = stores.get(it)
             snap[it] = s.instant(pe) if s is not None else np.nan
+        for it in PERIOD_ITEMS:
+            snap[it] = period_value(stores.get(it), pe)
         for it in DEI_ITEMS:
             s = stores.get(it)
             v, e = (s.latest_instant(acc) if s is not None else (np.nan, None))
@@ -300,8 +333,9 @@ def derive(snap: pd.DataFrame) -> pd.DataFrame:
     debt = np.where(nc.notna(), nc + cur + stb, np.where(total_alt.notna(), total_alt + stb, cur + stb))
     s["debt"] = debt
     s["debt_reported"] = nc.notna() | total_alt.notna() | s["debt_current"].notna() | s["short_borrowings"].notna()
-    s["shares"] = s["shares_cover"].where(s["shares_cover"] > 0, s["shares_gaap"])
-    s["shares_source"] = np.where(s["shares_cover"] > 0, "dei", np.where(s["shares_gaap"] > 0, "gaap", "none"))
+    dei, gaap, dil = s["shares_cover"], s["shares_gaap"], s["diluted_shares_q"]
+    s["shares"] = np.where(dei > 0, dei, np.where(gaap > 0, gaap, np.where(dil > 0, dil, np.nan)))
+    s["shares_source"] = np.where(dei > 0, "dei", np.where(gaap > 0, "gaap", np.where(dil > 0, "diluted_avg", "none")))
     s["ttm_fcf"] = s["ttm_cfo"] - s["ttm_capex"].fillna(0)
     for k in range(N_HISTORY):
         s[f"fy{k}_fcf"] = s[f"fy{k}_cfo"] - s[f"fy{k}_capex"].fillna(0)
@@ -411,6 +445,22 @@ def _symbol_months(symbol: str, years) -> pd.DataFrame | None:
 # ================================================================================ symbol assignment
 
 SOURCE_RANK = {"fsds": 0, "primary": 0, "current": 1}
+_DERIV_SUFFIXES = ("WS", "W", "U", "R", "RT")
+
+
+def is_derivative_symbol(th: pd.DataFrame) -> pd.Series:
+    """True for warrant / unit / right symbols (ZCARW, ABC.WS, ABCU) whose base symbol is also a candidate of the
+    same CIK. Only the common stock is kept (SEC current tickers list all of a company's listed securities)."""
+    sym = th["symbol"].astype(str)
+    have = set(zip(th["cik"], sym))
+    out = np.zeros(len(th), dtype=bool)
+    for i, (c, x) in enumerate(zip(th["cik"], sym)):
+        for suf in _DERIV_SUFFIXES:
+            for sep in (".", ""):
+                tail = sep + suf
+                if x.endswith(tail) and len(x) > len(tail) and (c, x[: -len(tail)]) in have:
+                    out[i] = True
+    return pd.Series(out, index=th.index)
 
 
 def symbol_windows(th: pd.DataFrame, status: pd.DataFrame, pad_days: int = 400) -> pd.DataFrame:
@@ -422,6 +472,7 @@ def symbol_windows(th: pd.DataFrame, status: pd.DataFrame, pad_days: int = 400) 
     """
     th = th.copy()
     th["symbol"] = th["symbol"].str.replace("-", ".", regex=False)
+    th = th[~is_derivative_symbol(th)]
     pref = th[th["source"] != "current"]
     w = pref.groupby(["cik", "symbol"]).agg(first=("first_filed", "min"), last=("last_filed", "max")).reset_index()
     w["w0"] = w["first"] - pd.Timedelta(days=pad_days)
@@ -482,7 +533,8 @@ def assign_symbols(windows: pd.DataFrame, prices: pd.DataFrame, max_stale_days: 
 # ================================================================================ monthly panel
 
 def monthly_panel(snap: pd.DataFrame, assigned: pd.DataFrame, companies: pd.DataFrame,
-                  months: pd.DatetimeIndex | None = None, max_age_days: int = 460) -> pd.DataFrame:
+                  months: pd.DatetimeIndex | None = None, max_age_days: int = 460,
+                  prices: pd.DataFrame | None = None) -> pd.DataFrame:
     """Join each (cik, month_end) price row to the latest snapshot accepted strictly before the month-end
     date (00:00 of that day, so the filing is public at least one session before), then compute market
     cap and EV. Snapshots older than max_age_days (by period end) are not used.
@@ -501,16 +553,24 @@ def monthly_panel(snap: pd.DataFrame, assigned: pd.DataFrame, companies: pd.Data
     p["mcap"] = p["close_raw"] * p["shares"]
     claims = (p["debt"].fillna(0) + p["preferred"].fillna(0) + p["minority_interest"].fillna(0))
     p["ev"] = p["mcap"] + claims - p["cash"].fillna(0) - p["short_investments"].fillna(0)
-    p["mcap_to_float"] = p["mcap"] / p["public_float"]
+    p["mcap_to_float"] = p["mcap"] / p["public_float"].where(p["public_float"] > 0)
+    # Mapping / share-count check. Public float is valued at the float date (last day of Q2), not today, so
+    # compare share COUNTS: implied float shares = public float / raw close at the float date.
+    p["float_price"] = np.nan
+    if prices is not None:
+        fp = prices[["symbol", "month_end", "close_raw"]].rename(columns={"month_end": "_fm", "close_raw": "float_price"})
+        p["_fm"] = p["public_float_date"] + pd.offsets.MonthEnd(0)
+        p = p.drop(columns="float_price").merge(fp, on=["symbol", "_fm"], how="left").drop(columns="_fm")
+    p["shares_to_float"] = p["shares"] / (p["public_float"].where(p["public_float"] > 0) / p["float_price"])
     c = companies.set_index("cik")
     p["sic"] = p["cik"].map(c["sic"])
     sic = pd.to_numeric(p["sic"], errors="coerce")
     p["is_financial"] = sic.between(6000, 6799)
     p["is_blank_check"] = sic.eq(6770)
     p["name"] = p["cik"].map(c["name"])
-    # mapping / share-count sanity: market cap should be >= public float (float excludes insiders) and not
-    # absurdly larger; outside [0.8, 50] flags a wrong symbol, wrong share units or a multi-class company.
-    p["mcap_suspect"] = ~p["mcap_to_float"].between(0.8, 50) & p["mcap_to_float"].notna()
+    # shares outstanding should be >= float shares (float excludes insiders) and not absurdly larger; outside
+    # [0.8, 50] flags a wrong symbol, wrong share units or a share class missing.
+    p["mcap_suspect"] = ~p["shares_to_float"].between(0.8, 50) & p["shares_to_float"].notna()
     p["age_days"] = (p["month_end"] - p["period_end"]).dt.days
     return p.reset_index(drop=True)
 

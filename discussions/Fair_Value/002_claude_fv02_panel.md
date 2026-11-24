@@ -6,7 +6,7 @@
 | **Date** | 2026-11-24 |
 | **Branch** | Fair_Value |
 | **Responds to** | Iván, 2026-11-24: go ahead with FV 02 on the FV 01 readout. The FV 01 readout found that dead companies have prices almost only from 2016 (Alpaca). Decisions: backtest 2016–2025; Alpaca the main price source; unadjusted Alpaca bars for market cap; Form-25 coverage check. |
-| **Engine** | `fv_panel.py` 0.1.0, `alpaca.py` 0.4.0, `daily_prices.py` 0.1.2, `edgar.py` 0.1.2 |
+| **Engine** | `fv_panel.py` 0.1.1, `alpaca.py` 0.4.0, `daily_prices.py` 0.1.2, `edgar.py` 0.1.2 |
 | **Status** | Data build and checks. No signal, no returns. |
 
 ## 1. FV 01 readout (run 767f00f)
@@ -77,3 +77,43 @@
 - Multi-class companies (GOOG/GOOGL) take one symbol × cover shares, which can be one class only. Check E shows them.
 - IFRS filers (20-F / 40-F) are left out.
 - Tag choice is per (item, period) by priority. A switch of tag between years (Revenues → RevenueFromContract…, 2018) can mix definitions.
+
+## 4. Readout of run 09a5e3f (fv_panel 0.1.0) and fixes in 0.1.1
+
+**Build.**
+- 696,581 snapshots from 14,755 CIKs.
+- 10,818 symbols with raw bars.
+- 533,004 CIK-months assigned to 8,670 CIKs; 14,444 ambiguous symbol-months dropped (2.7%).
+- Panel: 449,110 rows, 7,203 CIKs.
+
+**A. Apple.** All three checks match the reported figures exactly (383.285 / 394.328 / 385.706 bn).
+
+**B. Universe per December.**
+- Priced: 3,400–4,100.
+- Non-financial, non-SPAC: 2,300–2,800.
+- DCF-ready with 5 years: 1,250–1,800, except 934 in 2022. The 2022 dip is an artefact of check E (below).
+- EV 10–200 bn: 260–400 companies; > 200 bn: 13–43.
+
+**C. Coverage on the priced non-financial universe.**
+- CFO and net income 94–96%; D&A ~89%; operating income ~88%; revenue ~84% (pre-revenue biotech is part of the gap); capex 80–88%; interest expense ~70%.
+- fy4 FCF 73–85%.
+- Shares 100%, but 9.3% of panel rows have shares "none": not priced into an mcap.
+
+**D. Form 25 coverage.**
+- 74% overall, but 84–92% in 2016–2020 and 53–61% in 2023–2025.
+- The denominator included SPAC liquidations (2021–2023 wave), which never enter the universe. 0.1.1 reports operating companies separately.
+
+**E. The mapping check was wrong, for two reasons.**
+1. **Multi-class companies.** companyfacts strips the class dimension, so the last class read won. A class B with 0 shares gave mcap 0 (CRWD, DDOG, LYFT, TOST); a class with float 0 gave an infinite ratio (GOOG).
+2. **Timing.** Public float is valued at the prior 30 June, so mcap / float falls below 0.8 whenever the price drops after that date. The whole of 2022 was flagged; the median ratio of suspects is 0.61.
+
+Also seen: warrant symbols (ZCARW) chosen over the common stock.
+
+**F. Exits.** Acquired: 118–208 a year. Delisted-other jumps to 398 / 441 / 980 in 2020–2022, consistent with SPAC liquidations. 0.1.1 splits exits by SPAC.
+
+**Fixes in 0.1.1** (snapshots must be rebuilt; the version check enforces it):
+- **Cover-page share classes.** Shares outstanding and public float are summed across classes within the same filing and date; exact duplicates are counted once.
+- **Shares fallback.** dei → us-gaap `CommonStockSharesOutstanding` → latest-quarter weighted diluted (else basic) shares. The 0.1.0 TTM of diluted shares was meaningless and is removed.
+- **Mapping check on share counts.** Shares outstanding ÷ (public float ÷ raw close at the float date), flagged outside [0.8, 50]. Float ≤ 0 (new IPOs) is not checked.
+- **Warrants, units and rights** (…W, …WS, …U, …R, …RT) are dropped when the CIK's base symbol is also a candidate.
+- **D and F** reported separately for operating companies and SPACs.
