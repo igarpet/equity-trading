@@ -343,7 +343,9 @@ def derive(snap: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_snapshots(overwrite: bool = False, workers: int = 3, facts_dir: Path | None = None) -> pd.DataFrame:
-    """Snapshots for every facts part (resumable per part). Returns a per-part summary."""
+    """Snapshots for every facts part (resumable per part). Returns a per-part summary.
+
+    Parts built by another fv_panel version are deleted and rebuilt automatically."""
     from joblib import Parallel, delayed
     e = E.edgar_dir()
     filings = pd.read_parquet(e / "filings.parquet", columns=["cik", "accn", "form", "accepted", "filing_date",
@@ -357,11 +359,13 @@ def build_snapshots(overwrite: bool = False, workers: int = 3, facts_dir: Path |
     out_dir.mkdir(exist_ok=True)
     man = out_dir / "manifest.json"
     meta = {"version": FV_PANEL_VERSION, "n_parts": len(parts)}
-    if man.exists() and json.loads(man.read_text()).get("version") != FV_PANEL_VERSION:
-        if not overwrite:
-            raise RuntimeError(f"{out_dir} was built by another fv_panel version; pass overwrite=True")
+    old = json.loads(man.read_text()).get("version") if man.exists() else None
+    if overwrite or (old is not None and old != FV_PANEL_VERSION):
+        if old != FV_PANEL_VERSION:
+            print(f"snapshots built by fv_panel {old}; rebuilding with {FV_PANEL_VERSION}")
         for p in out_dir.glob("part-*.parquet"):
             p.unlink()
+        overwrite = True
     man.write_text(json.dumps(meta))
     todo = [p for p in parts if overwrite or not (out_dir / p.name).exists()]
     print(f"{len(todo)} of {len(parts)} facts parts to process, {workers} workers")
