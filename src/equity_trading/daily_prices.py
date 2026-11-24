@@ -22,7 +22,7 @@ import pandas as pd
 
 from .data import safe_name, vendor_dir
 
-DAILY_PRICES_VERSION = "0.1.1"
+DAILY_PRICES_VERSION = "0.1.2"
 YAHOO_COLUMNS = ["Open", "High", "Low", "Close", "Adj Close", "Volume", "Dividends", "Stock Splits"]
 STATUS_COLUMNS = ["symbol", "status", "rows", "first", "last", "checked"]
 
@@ -174,16 +174,20 @@ def yahoo_coverage() -> pd.DataFrame:
     return load_status()
 
 
-def download_alpaca_daily(symbols: list[str], years: list[int], batch: int = 50) -> None:
-    """Alpaca 1Day bars (SIP, 2016 ->) for symbols, via the existing alpaca cache (resumable per year)."""
+def download_alpaca_daily(symbols: list[str], years: list[int], batch: int = 50, adjustment: str = "all") -> None:
+    """Alpaca 1Day bars (SIP, 2016 ->) for symbols, via the alpaca cache (resumable per year).
+
+    adjustment='all' (split + dividend adjusted, for returns) caches to bars/1Day/; 'raw' (unadjusted, for
+    market cap = close x shares outstanding reported at the time) caches to bars/1Day_raw/.
+    """
     from . import alpaca
     years = [y for y in years if 2016 <= y <= 2025]
-    alpaca.download_years(list(dict.fromkeys(symbols)), "1Day", years, batch=batch)
+    alpaca.download_years(list(dict.fromkeys(symbols)), "1Day", years, batch=batch, adjustment=adjustment)
 
 
-def alpaca_coverage(symbols: list[str]) -> pd.DataFrame:
+def alpaca_coverage(symbols: list[str], adjustment: str = "all") -> pd.DataFrame:
     """Per symbol: years cached, first and last bar date in the Alpaca 1Day cache."""
-    root = vendor_dir("Alpaca") / "bars" / "1Day"
+    root = vendor_dir("Alpaca") / "bars" / ("1Day" if adjustment == "all" else f"1Day_{adjustment}")
     rows = []
     for s in symbols:
         d = root / safe_name(s)

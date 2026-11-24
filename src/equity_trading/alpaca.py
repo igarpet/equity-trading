@@ -21,7 +21,7 @@ import pandas as pd
 
 from .data import NY, safe_name, vendor_dir
 
-ALPACA_VERSION = "0.3.1"
+ALPACA_VERSION = "0.4.0"
 BASE_URL = "https://data.alpaca.markets/v2/stocks/bars"
 MAX_CALLS_PER_MIN = 180  # free plan limit is 200
 
@@ -101,18 +101,21 @@ def fetch_bars(symbols: list[str], timeframe: str, start: str, end: str,
     return res
 
 
-def _cache_dir(timeframe: str) -> "os.PathLike":
-    d = vendor_dir("Alpaca") / "bars" / timeframe
+def _cache_dir(timeframe: str, adjustment: str = "all") -> "os.PathLike":
+    """bars/<timeframe>/ for split+dividend adjusted bars (default), bars/<timeframe>_<adjustment>/ otherwise
+    (e.g. 1Day_raw: unadjusted, for market capitalisation = price x shares reported at the time)."""
+    d = vendor_dir("Alpaca") / "bars" / (timeframe if adjustment == "all" else f"{timeframe}_{adjustment}")
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
-def _download_chunk(chunk: list[str], timeframe: str, y: int) -> int:
+def _download_chunk(chunk: list[str], timeframe: str, y: int, adjustment: str = "all") -> int:
     import requests
-    got = fetch_bars(chunk, timeframe, f"{y}-01-01", f"{y + 1}-01-01", session=requests.Session())
+    got = fetch_bars(chunk, timeframe, f"{y}-01-01", f"{y + 1}-01-01", adjustment=adjustment,
+                     session=requests.Session())
     n = 0
     for s in chunk:
-        p = _cache_dir(timeframe) / safe_name(s)
+        p = _cache_dir(timeframe, adjustment) / safe_name(s)
         p.mkdir(parents=True, exist_ok=True)
         df = got.get(s, pd.DataFrame(columns=["t"]))
         tmp = p / f"{y}.parquet.tmp"
@@ -123,7 +126,7 @@ def _download_chunk(chunk: list[str], timeframe: str, y: int) -> int:
 
 
 def download_years(symbols: list[str], timeframe: str, years: list[int], batch: int = 10,
-                   workers: int = 8, verbose: bool = True) -> None:
+                   workers: int = 8, verbose: bool = True, adjustment: str = "all") -> None:
     """Fill the cache for complete past years with `workers` parallel requests (shared rate
     limit, MAX_CALLS_PER_MIN). Skips symbol-years already cached; safe to interrupt and re-run."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -133,16 +136,16 @@ def download_years(symbols: list[str], timeframe: str, years: list[int], batch: 
         raise ValueError(f"{bad} not complete past years; download_years only caches complete years.")
     tasks = []
     for y in years:
-        todo = [s for s in symbols if not (_cache_dir(timeframe) / safe_name(s) / f"{y}.parquet").exists()]
+        todo = [s for s in symbols if not (_cache_dir(timeframe, adjustment) / safe_name(s) / f"{y}.parquet").exists()]
         tasks += [(todo[i:i + batch], y) for i in range(0, len(todo), batch)]
     if verbose:
-        print(f"{timeframe}: {len(tasks)} batches to download ({sum(len(c) for c, _ in tasks)} symbol-years), "
+        print(f"{timeframe} ({adjustment}): {len(tasks)} batches to download ({sum(len(c) for c, _ in tasks)} symbol-years), "
               f"{workers} parallel requests")
     if not tasks:
         return
     t0, done, bars = time.time(), 0, 0
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = [ex.submit(_download_chunk, c, timeframe, y) for c, y in tasks]
+        futs = [ex.submit(_download_chunk, c, timeframe, y, adjustment) for c, y in tasks]
         for f in as_completed(futs):
             bars += f.result()
             done += 1
@@ -152,10 +155,10 @@ def download_years(symbols: list[str], timeframe: str, years: list[int], batch: 
                       f"~{el / done * (len(tasks) - done) / 60:.0f} min left", flush=True)
 
 
-def load_bars(symbol: str, timeframe: str, years: list[int]) -> pd.DataFrame:
+def load_bars(symbol: str, timeframe: str, years: list[int], adjustment: str = "all") -> pd.DataFrame:
     parts = []
     for y in years:
-        p = _cache_dir(timeframe) / safe_name(symbol) / f"{y}.parquet"
+        p = _cache_dir(timeframe, adjustment) / safe_name(symbol) / f"{y}.parquet"
         if not p.exists():
             raise FileNotFoundError(f"{p} missing; run download_years first.")
         parts.append(pd.read_parquet(p))

@@ -7,6 +7,7 @@ live and delisted. No size filter here: enterprise-value filters are applied poi
 
   python tools/prices/daily_download.py --source yahoo            # unadjusted OHLCV + actions, 2008 -> 2025
   python tools/prices/daily_download.py --source alpaca           # Alpaca 1Day SIP bars 2016 -> 2025 (adjusted)
+  python tools/prices/daily_download.py --source alpaca --adjustment raw   # unadjusted, for market cap (FV 02)
   python tools/prices/daily_download.py --source yahoo --retry-missing   # re-ask symbols recorded missing
   Rate limits: rate-limited symbols are not recorded; the run sleeps 15 -> 60 min and retries the batch.
   python tools/prices/daily_download.py --list-only               # write the symbol list and stop
@@ -44,6 +45,8 @@ def main() -> int:
     p.add_argument("--start", default="2008-01-01")
     p.add_argument("--retry-missing", action="store_true")
     p.add_argument("--list-only", action="store_true")
+    p.add_argument("--adjustment", choices=["all", "raw"], default="all",
+                   help="Alpaca only: all = split/dividend adjusted (bars/1Day), raw = unadjusted (bars/1Day_raw)")
     p.add_argument("--batch", type=int, default=20, help="Yahoo symbols per request batch")
     p.add_argument("--pause", type=float, default=5.0, help="seconds between Yahoo batches")
     a = p.parse_args()
@@ -57,7 +60,7 @@ def main() -> int:
         if len(log):
             print(log["status"].value_counts().to_string())
     else:
-        P.download_alpaca_daily(syms["alpaca"].tolist(), list(range(2016, 2026)))
+        P.download_alpaca_daily(syms["alpaca"].tolist(), list(range(2016, 2026)), adjustment=a.adjustment)
     return 0
 
 
