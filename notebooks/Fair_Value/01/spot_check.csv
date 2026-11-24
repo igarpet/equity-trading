@@ -1,8 +1,8 @@
 symbol,what,edgar_ciks,yahoo,alpaca
-SIVB,SVB Financial (failed 2023),[2],missing,2016-01-04..2018-12-28
-FRC,First Republic (failed 2023),[4],2018-01-02..2019-05-31,none
-BBBY,Bed Bath & Beyond (bankrupt 2023),[],not requested,none
-ATVI,Activision (acquired 2023),[],not requested,none
-TWTR,Twitter (taken private 2022),[],not requested,none
-CELG,Celgene (acquired 2019),[],not requested,none
-AAPL,Apple (live control),[1],2009-01-01..2025-12-31,none
+SIVB,SVB Financial (failed 2023),[719739],missing,2016-01-04..2023-03-09
+FRC,First Republic (failed 2023),[1420239],missing,2016-01-04..2023-04-28
+BBBY,Bed Bath & Beyond (bankrupt 2023),"[886158, 1130713]",missing,2016-01-04..2025-12-31
+ATVI,Activision (acquired 2023),[718877],missing,2016-01-04..2023-10-13
+TWTR,Twitter (taken private 2022),[1418091],missing,2016-01-04..2022-10-27
+CELG,Celgene (acquired 2019),[816284],missing,2016-01-04..2019-11-20
+AAPL,Apple (live control),[320193],2008-01-02..2025-12-31,2016-01-04..2025-12-31
