@@ -117,3 +117,26 @@ Also seen: warrant symbols (ZCARW) chosen over the common stock.
 - **Mapping check on share counts.** Shares outstanding ÷ (public float ÷ raw close at the float date), flagged outside [0.8, 50]. Float ≤ 0 (new IPOs) is not checked.
 - **Warrants, units and rights** (…W, …WS, …U, …R, …RT) are dropped when the CIK's base symbol is also a candidate.
 - **D and F** reported separately for operating companies and SPACs.
+
+## 5. Readout of run 5b4be3e (fv_panel 0.1.1)
+
+**A. Apple.** Unchanged, exact.
+
+**B. DCF-ready universe per December.** 1,960–2,120 in 2016–2020, 1,610–1,880 in 2021–2025; the 2022 dip has gone.
+- **By EV:** <300M 260–620; 300M–2B 400–650; 2–10B 480–560; 10–200B 315–440; >200B 15–45.
+
+**C.** Unchanged: CFO and net income 87–97%, revenue ~84%, capex 77–88%, fy4 FCF 71–84%.
+
+**D. Form 25 coverage, operating companies (1,992 filers).** 75.1% overall: 84–92% in 2016–2020, 74–76% in 2021–2022, 55–62% in 2023–2025. The recent decline is not SPACs (SIC 6770). New check G measures it on the companies that matter.
+
+**E. Mapping.** 6.7% of rows flagged, down from 26%. Median shares / float shares 1.19. The remaining extremes (10⁻⁷ … 10⁹) are mostly:
+- **wholly owned subsidiaries filing their own 10-K** under the parent's symbol: old Dow Chemical → DOW, EIDP → DD;
+- **cover-page scale errors**, with shares or float tagged in the wrong unit (ManpowerGroup, Hexcel, Zimmer at about 10⁻⁶; Brookdale, AEHR at 10⁸–10⁹).
+
+Flagged rows are excluded from the studies.
+
+**F. Exits, operating companies.** Acquired: 119–206 a year. Delisted-other: 105–163 a year, rising to 394 / 432 / 806 in 2020–2022. That spike is probably SPACs filed without SIC 6770, which F cannot separate. Check G restricts exits to companies that were DCF-ready.
+
+**Added (notebook only, no rebuild).**
+- **G1.** Form 25 coverage among companies that had, within 24 months before the form, a filing with a 5-year FCF history, revenue > 0, non-financial, and public float ≥ $100M. Reported by year and by float bucket, with the uncovered companies and their Alpaca spans.
+- **G2.** Exits among companies that were DCF-ready in the panel within 24 months before their last price.
