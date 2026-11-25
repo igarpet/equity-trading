@@ -101,3 +101,26 @@ def test_planted_structure_is_found(tmp_path):
 def test_null_has_no_skill(tmp_path):
     r = _syn_eval(tmp_path, 0.0)
     assert r["g2_p"] > 0.05
+
+
+def test_rolling_states_rule():
+    r = np.r_[np.full(20, 30.0), np.full(20, -30.0)]          # +30 bp x 20 = +6% -> bull; then down
+    st, ok = H.rolling_states(r)
+    assert not ok[:19].any() and ok[19:].all()
+    assert st[19] == 2 and st[-1] == 0
+    assert st[30] == 1                                         # mixed window: +30 x 9 - 30 x 11 = -0.6%
+
+
+def test_random_walk_persistence_is_mechanical():
+    """On iid returns the 20-bar rule looks sticky; the shuffle null matches it and non-overlapping blocks lose it."""
+    r = np.random.default_rng(1).normal(3, 120, 4000)
+    rep = H.chain_report(r, n_null=30)
+    assert rep["diag"]["bull"] > 0.7
+    assert abs(rep["diag"]["bull"] - rep["null_shuffle_diag_mean"]["bull"]) < 0.05
+    assert rep["P_nonoverlap"].loc["bull", "bull"] < 0.4
+    assert np.allclose(rep["P"].sum(1), 1)
+
+
+def test_band_scaled():
+    assert H.band_scaled("1d") == pytest.approx(0.05)
+    assert H.band_scaled("1h") == pytest.approx(0.05 * np.sqrt(60 / 1380))

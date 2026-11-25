@@ -1,22 +1,17 @@
 # MNQ hierarchical Markov regimes — daily → 1 hour → 15 minutes (HMK)
 
-**Question.** Does conditioning MNQ's intraday Markov regimes on the higher timeframe's state (P(intraday state | daily state)) give a calibrated P(up) for the next 1-hour bar that pays its costs? Price only. Micro contracts only. Ticks per contract.
+**Question (HMK 01, descriptive).** What do the video's bull/sideways/bear transition matrices look like for MNQ on daily, 1-hour and 15-minute bars, and how much of their persistence is real rather than built into the 20-bar rule? No trading test.
 
-Protocol: HMK 01 [`001`](../../discussions/MNQ_Hierarchical_Markov/001_claude_hmk01_preregistration.md).
+Protocol: [`HMK 002`](../../discussions/MNQ_Hierarchical_Markov/002_claude_hmk01_transition_matrices.md) (supersedes the withdrawn HMK 001).
 
 | Notebook | Content | Output |
 |---|---|---|
-| `01_hierarchical_markov` | 3-state HMMs on 1d, 1h and 15m returns; child transitions depend on the parent's one-step forecast (`H3`), vs no parent (`U`) and the video's 20-day ±5% state (`RULE`); walk-forward 2021-01 – 2023-06; gates G1–G4; conditional matrices, calibration, always-in sign(E[r]) vs always long | `01/` (`01c/` with `HMK_CONFIRM=1`) |
+| `01_transition_matrices` | 20-bar sum, ±5% (intraday also √time-scaled ±1.04% / ±0.52%); counts, P, persistence vs shuffled returns and non-overlapping blocks, P^2/3/5/20, stationary distribution, run lengths, next-bar up share by state; 2020-01 – 2023-06 and halves | `01/` |
 
-**Data.** MNQ `ohlcv-1m` already on disk (`micro_bars`); nothing to buy. Nothing from 2026.
+**Data.** MNQ `ohlcv-1m` already on disk; nothing from 2023-07 onwards or 2026 is read.
 
-**Code.** `src/equity_trading/hmk.py` (numba EM with parent-dependent transitions, causal filter, bars, gates, synthetic data). Reuses only `micro_bars.load_1m` and `futures.cme_trade_date`; no other branch's models or thresholds. Tests: `tests/test_hmk.py`.
+**Run.** `python -m pytest -q tests/test_hmk.py`, then run `01` (a few minutes). Smoke run: `HMK_SYNTHETIC=1` (random walk; shows the rule's built-in persistence).
 
-**Run order.**
-1. `python -m pytest -q tests/test_hmk.py`
-2. Run `01` (fits cached in `01/wf_0.1.0.pkl`; delete to refit).
-3. Confirmation only after the discovery readout: `set HMK_CONFIRM=1`, rerun `01` (writes `01c/`).
-
-**Smoke runs.** `HMK_SYNTHETIC=1` (planted: G2–G4 pass, G1 fails by design, see HMK 001 §8); add `HMK_SYNTH_NULL=1` with a separate `HMK_SYNTH_DIR` (no structure: all gates fail).
+**Code.** `src/equity_trading/hmk.py`. The hierarchical HMM engine from HMK 001 is kept there but unused.
 
 Status: code ready, not run.

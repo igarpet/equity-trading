@@ -636,3 +636,127 @@ def registration(cfg: HMKConfig = HMKConfig()) -> dict:
     d = asdict(cfg)
     d.update(version=HMK_VERSION, half_rt_market=cfg.half_rt_market, round_trip_market=cfg.round_trip_market)
     return d
+
+
+# ----------------------------------------------------------------------------- HMK 01: observable 20-bar chains (video rule)
+STATE_NAMES = ("bear", "side", "bull")
+
+
+def band_scaled(tier: str, band: float = 0.05) -> float:
+    """The video's daily band scaled to a bar of ``tier`` by sqrt(time): 5% x sqrt(bar minutes / 1380)."""
+    return band * math.sqrt(TIERS[tier] / SESSION_MIN)
+
+
+def rolling_states(ret_bp: np.ndarray, window: int = 20, band: float = 0.05) -> tuple[np.ndarray, np.ndarray]:
+    """Video rule on any bar series: sum of the last ``window`` bar log returns (this bar included) >= +band -> bull,
+    <= -band -> bear, else sideways. Missing returns count as 0. Returns (state 0/1/2, valid) where valid needs a
+    full window."""
+    r = np.nan_to_num(np.asarray(ret_bp, float)) / 1e4
+    s = pd.Series(r).rolling(window, min_periods=window).sum().to_numpy()
+    st = np.ones(len(r), np.int64)
+    st[s >= band] = 2
+    st[s <= -band] = 0
+    return st, np.isfinite(s)
+
+
+def transition_counts(st: np.ndarray, valid: np.ndarray, step: int = 1) -> np.ndarray:
+    """3x3 counts of (state at t, state at t + step) over pairs where both are valid."""
+    a, b = st[:-step], st[step:]
+    ok = valid[:-step] & valid[step:]
+    C = np.zeros((3, 3))
+    np.add.at(C, (a[ok], b[ok]), 1)
+    return C
+
+
+def to_probs(C: np.ndarray) -> np.ndarray:
+    rs = C.sum(1, keepdims=True)
+    return np.divide(C, rs, out=np.full_like(C, np.nan), where=rs > 0)
+
+
+def stationary(P: np.ndarray) -> np.ndarray:
+    Q = np.nan_to_num(P)
+    w, v = np.linalg.eig(Q.T)
+    p = np.real(v[:, np.argmin(np.abs(w - 1))])
+    return p / p.sum()
+
+
+def run_lengths(st: np.ndarray, valid: np.ndarray) -> pd.DataFrame:
+    """Mean / median length (bars) of uninterrupted runs in each state."""
+    rows = []
+    cur, n = None, 0
+    for s, v in zip(st, valid):
+        if not v:
+            if cur is not None:
+                rows.append((cur, n))
+            cur, n = None, 0
+            continue
+        if s == cur:
+            n += 1
+        else:
+            if cur is not None:
+                rows.append((cur, n))
+            cur, n = s, 1
+    if cur is not None:
+        rows.append((cur, n))
+    d = pd.DataFrame(rows, columns=["state", "len"])
+    return d.groupby("state").len.agg(["count", "mean", "median", "max"]).reindex(range(3)).set_axis(STATE_NAMES)
+
+
+def chain_report(ret_bp: np.ndarray, window: int = 20, band: float = 0.05, n_null: int = 200, seed: int = 0,
+                 mask: np.ndarray | None = None) -> dict:
+    """Everything HMK 01 reports for one bar series: matrix, persistence, n-step, stationary, runs, null diagonals.
+
+    Null A (shuffle): the same returns in random order, same rule -> the persistence that the 20-bar overlap alone
+    produces for these returns. Null B (non-overlapping): states on consecutive non-overlapping 20-bar blocks.
+    ``mask``: bars to report (e.g. the study window); earlier bars still feed the 20-bar sums (run-in)."""
+    mask = np.ones(len(ret_bp), bool) if mask is None else np.asarray(mask, bool)
+    st, ok = rolling_states(ret_bp, window, band)
+    ok = ok & mask
+    C = transition_counts(st, ok)
+    P = to_probs(C)
+    rng = np.random.default_rng(seed)
+    r = np.asarray(ret_bp, float)
+    fin = np.isfinite(r)
+    diag_null = []
+    for _ in range(n_null):
+        rr = r.copy()
+        rr[fin] = rng.permutation(r[fin])
+        s2, o2 = rolling_states(rr, window, band)
+        o2 = o2 & mask
+        diag_null.append(np.diag(to_probs(transition_counts(s2, o2))))
+    diag_null = np.array(diag_null)
+    idx = np.flatnonzero(ok)
+    blk = np.zeros(len(st), bool)
+    if len(idx):
+        blk[idx[0]::window] = True
+    sb = st[blk]
+    Cb = np.zeros((3, 3))
+    if len(sb) > 1:
+        np.add.at(Cb, (sb[:-1], sb[1:]), 1)
+    out = {"window": window, "band": band, "n_bars": int(ok.sum()),
+           "share": pd.Series(np.bincount(st[ok], minlength=3) / max(ok.sum(), 1), index=STATE_NAMES),
+           "counts": pd.DataFrame(C, index=STATE_NAMES, columns=STATE_NAMES),
+           "P": pd.DataFrame(P, index=STATE_NAMES, columns=STATE_NAMES),
+           "diag": pd.Series(np.diag(P), index=STATE_NAMES),
+           "expected_duration": pd.Series(1 / (1 - np.diag(P)), index=STATE_NAMES),
+           "null_shuffle_diag_mean": pd.Series(np.nanmean(diag_null, 0), index=STATE_NAMES),
+           "null_shuffle_diag_q95": pd.Series(np.nanquantile(diag_null, 0.95, 0), index=STATE_NAMES),
+           "P_nonoverlap": pd.DataFrame(to_probs(Cb), index=STATE_NAMES, columns=STATE_NAMES),
+           "n_blocks": int(blk.sum()),
+           "stationary": pd.Series(stationary(P), index=STATE_NAMES),
+           "runs": run_lengths(st, ok)}
+    out["P_steps"] = {n: pd.DataFrame(np.linalg.matrix_power(np.nan_to_num(P), n), index=STATE_NAMES,
+                                      columns=STATE_NAMES) for n in (2, 3, 5, 20)}
+    # descriptive: share of next bars that close up, by today's state (not a trading test)
+    nxt = np.r_[r[1:], np.nan]
+    m = ok & np.isfinite(nxt) & (nxt != 0)
+    out["next_bar_up_share"] = pd.Series([float((nxt[m & (st == k)] > 0).mean()) if (m & (st == k)).any() else np.nan
+                                          for k in range(3)], index=STATE_NAMES)
+    out["next_bar_n"] = pd.Series([int((m & (st == k)).sum()) for k in range(3)], index=STATE_NAMES)
+    return out
+
+
+def tier_returns(bars: dict, tier: str, a: dt.date, b: dt.date) -> pd.DataFrame:
+    """Bar returns of one tier in [a, b] (CME trade dates), every bar of the session in time order."""
+    x = in_window(bars[tier], a, b).copy()
+    return x[["trade_date", "k", "ts", "close", "ret_bp", "obs"]].reset_index(drop=True)
