@@ -702,57 +702,117 @@ def run_lengths(st: np.ndarray, valid: np.ndarray) -> pd.DataFrame:
     return d.groupby("state").len.agg(["count", "mean", "median", "max"]).reindex(range(3)).set_axis(STATE_NAMES)
 
 
-def chain_report(ret_bp: np.ndarray, window: int = 20, band: float = 0.05, n_null: int = 200, seed: int = 0,
-                 mask: np.ndarray | None = None) -> dict:
-    """Everything HMK 01 reports for one bar series: matrix, persistence, n-step, stationary, runs, null diagonals.
-
-    Null A (shuffle): the same returns in random order, same rule -> the persistence that the 20-bar overlap alone
-    produces for these returns. Null B (non-overlapping): states on consecutive non-overlapping 20-bar blocks.
-    ``mask``: bars to report (e.g. the study window); earlier bars still feed the 20-bar sums (run-in)."""
-    mask = np.ones(len(ret_bp), bool) if mask is None else np.asarray(mask, bool)
-    st, ok = rolling_states(ret_bp, window, band)
-    ok = ok & mask
+def chain_stats(st: np.ndarray, ok: np.ndarray, ret_bp: np.ndarray, window: int) -> dict:
+    """Matrix, persistence, n-step, stationary, runs, non-overlapping blocks and next-bar up share for states ``st``
+    on bars ``ok``."""
+    r = np.asarray(ret_bp, float)
     C = transition_counts(st, ok)
     P = to_probs(C)
-    rng = np.random.default_rng(seed)
-    r = np.asarray(ret_bp, float)
-    fin = np.isfinite(r)
-    diag_null = []
-    for _ in range(n_null):
-        rr = r.copy()
-        rr[fin] = rng.permutation(r[fin])
-        s2, o2 = rolling_states(rr, window, band)
-        o2 = o2 & mask
-        diag_null.append(np.diag(to_probs(transition_counts(s2, o2))))
-    diag_null = np.array(diag_null)
     idx = np.flatnonzero(ok)
     blk = np.zeros(len(st), bool)
     if len(idx):
         blk[idx[0]::window] = True
+    blk &= ok
     sb = st[blk]
     Cb = np.zeros((3, 3))
     if len(sb) > 1:
         np.add.at(Cb, (sb[:-1], sb[1:]), 1)
-    out = {"window": window, "band": band, "n_bars": int(ok.sum()),
-           "share": pd.Series(np.bincount(st[ok], minlength=3) / max(ok.sum(), 1), index=STATE_NAMES),
-           "counts": pd.DataFrame(C, index=STATE_NAMES, columns=STATE_NAMES),
-           "P": pd.DataFrame(P, index=STATE_NAMES, columns=STATE_NAMES),
-           "diag": pd.Series(np.diag(P), index=STATE_NAMES),
-           "expected_duration": pd.Series(1 / (1 - np.diag(P)), index=STATE_NAMES),
-           "null_shuffle_diag_mean": pd.Series(np.nanmean(diag_null, 0), index=STATE_NAMES),
-           "null_shuffle_diag_q95": pd.Series(np.nanquantile(diag_null, 0.95, 0), index=STATE_NAMES),
-           "P_nonoverlap": pd.DataFrame(to_probs(Cb), index=STATE_NAMES, columns=STATE_NAMES),
-           "n_blocks": int(blk.sum()),
-           "stationary": pd.Series(stationary(P), index=STATE_NAMES),
-           "runs": run_lengths(st, ok)}
-    out["P_steps"] = {n: pd.DataFrame(np.linalg.matrix_power(np.nan_to_num(P), n), index=STATE_NAMES,
-                                      columns=STATE_NAMES) for n in (2, 3, 5, 20)}
-    # descriptive: share of next bars that close up, by today's state (not a trading test)
     nxt = np.r_[r[1:], np.nan]
     m = ok & np.isfinite(nxt) & (nxt != 0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        out = {"window": window, "n_bars": int(ok.sum()),
+               "share": pd.Series(np.bincount(st[ok], minlength=3) / max(ok.sum(), 1), index=STATE_NAMES),
+               "counts": pd.DataFrame(C, index=STATE_NAMES, columns=STATE_NAMES),
+               "P": pd.DataFrame(P, index=STATE_NAMES, columns=STATE_NAMES),
+               "diag": pd.Series(np.diag(P), index=STATE_NAMES),
+               "expected_duration": pd.Series(1 / (1 - np.diag(P)), index=STATE_NAMES),
+               "P_nonoverlap": pd.DataFrame(to_probs(Cb), index=STATE_NAMES, columns=STATE_NAMES),
+               "n_blocks": int(blk.sum()),
+               "stationary": pd.Series(stationary(P), index=STATE_NAMES),
+               "runs": run_lengths(st, ok)}
+    out["P_steps"] = {n: pd.DataFrame(np.linalg.matrix_power(np.nan_to_num(P), n), index=STATE_NAMES,
+                                      columns=STATE_NAMES) for n in (2, 3, 5, 20)}
     out["next_bar_up_share"] = pd.Series([float((nxt[m & (st == k)] > 0).mean()) if (m & (st == k)).any() else np.nan
                                           for k in range(3)], index=STATE_NAMES)
     out["next_bar_n"] = pd.Series([int((m & (st == k)).sum()) for k in range(3)], index=STATE_NAMES)
+    return out
+
+
+def _shuffled(r: np.ndarray, rng) -> np.ndarray:
+    rr = r.copy()
+    fin = np.isfinite(r)
+    rr[fin] = rng.permutation(r[fin])
+    return rr
+
+
+def chain_report(ret_bp: np.ndarray, window: int = 20, band: float = 0.05, n_null: int = 200, seed: int = 0,
+                 mask: np.ndarray | None = None) -> dict:
+    """Observable rule (``band`` on the ``window``-bar return): chain_stats plus the shuffled-return null.
+
+    Null A (shuffle): the same returns in random order, same rule -> the persistence that the window overlap alone
+    produces for these returns. Null B (non-overlapping): states on consecutive non-overlapping blocks.
+    ``mask``: bars to report (e.g. the study window); earlier bars still feed the sums (run-in)."""
+    r = np.asarray(ret_bp, float)
+    mask = np.ones(len(r), bool) if mask is None else np.asarray(mask, bool)
+    st, ok = rolling_states(r, window, band)
+    ok = ok & mask
+    out = chain_stats(st, ok, r, window)
+    rng = np.random.default_rng(seed)
+    dn = []
+    for _ in range(n_null):
+        s2, o2 = rolling_states(_shuffled(r, rng), window, band)
+        dn.append(np.diag(to_probs(transition_counts(s2, o2 & mask))))
+    dn = np.array(dn)
+    with np.errstate(invalid="ignore"):
+        out["null_shuffle_diag_mean"] = pd.Series(np.nanmean(dn, 0), index=STATE_NAMES)
+        out["null_shuffle_diag_q95"] = pd.Series(np.nanquantile(dn, 0.95, 0), index=STATE_NAMES)
+    out["band"] = band
+    return out
+
+
+def band_for_window(tier: str, window: int, daily_band: float = 0.05, daily_window: int = 20) -> float:
+    """The daily rule (+-5% over 20 days) scaled by sqrt(time) to ``window`` bars of ``tier``."""
+    return daily_band * math.sqrt(window * TIERS[tier] / (daily_window * SESSION_MIN))
+
+
+def rolling_sum_bp(ret_bp: np.ndarray, window: int) -> tuple[np.ndarray, np.ndarray]:
+    r = np.nan_to_num(np.asarray(ret_bp, float))
+    s = pd.Series(r).rolling(window, min_periods=window).sum().to_numpy()
+    return s, np.isfinite(s)
+
+
+def hmm_states(ret_bp: np.ndarray, window: int, mask: np.ndarray, cfg: HMKConfig = HMKConfig(), seed: int = 0):
+    """3-state Gaussian HMM on the ``window``-bar return (bp), fitted on the masked bars; states = argmax of the
+    causal filtered probabilities (no look-ahead). Returns (states, ok, fitted model)."""
+    x, ok = rolling_sum_bp(ret_bp, window)
+    ok = ok & mask
+    W = np.ones((len(x), 1))
+    m = fit(np.where(ok, x, 0.0), ok, W, cfg, seed)
+    alpha, _ = filter_run(m, np.where(ok, x, 0.0), ok, W)
+    return alpha.argmax(1).astype(np.int64), ok, m
+
+
+def hmm_report(ret_bp: np.ndarray, window: int, mask: np.ndarray, cfg: HMKConfig = HMKConfig(), n_null: int = 20,
+               seed: int = 0) -> dict:
+    """HMM version of chain_report: the HMM chooses the bull/bear levels of the window return.
+    Null: shuffled returns, same window, HMM refitted on each permutation."""
+    r = np.asarray(ret_bp, float)
+    st, ok, m = hmm_states(r, window, mask, cfg, seed)
+    out = chain_stats(st, ok, r, window)
+    out["state_mean_pct"] = pd.Series(m.mu / 100, index=STATE_NAMES)
+    out["state_sd_pct"] = pd.Series(m.sd / 100, index=STATE_NAMES)
+    out["boundaries_pct"] = ((m.mu[:-1] + m.mu[1:]) / 2 / 100).tolist()
+    out["hmm_A"] = pd.DataFrame(m.A[0], index=STATE_NAMES, columns=STATE_NAMES)
+    rng = np.random.default_rng(seed)
+    cfg_null = HMKConfig(n_starts=2, max_iter=cfg.max_iter, tol=cfg.tol)
+    dn = []
+    for i in range(n_null):
+        s2, o2, _ = hmm_states(_shuffled(r, rng), window, mask, cfg_null, seed + i + 1)
+        dn.append(np.diag(to_probs(transition_counts(s2, o2))))
+    dn = np.array(dn)
+    with np.errstate(invalid="ignore"):
+        out["null_shuffle_diag_mean"] = pd.Series(np.nanmean(dn, 0), index=STATE_NAMES)
+        out["null_shuffle_diag_q95"] = pd.Series(np.nanquantile(dn, 0.95, 0), index=STATE_NAMES)
     return out
 
 

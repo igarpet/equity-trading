@@ -124,3 +124,23 @@ def test_random_walk_persistence_is_mechanical():
 def test_band_scaled():
     assert H.band_scaled("1d") == pytest.approx(0.05)
     assert H.band_scaled("1h") == pytest.approx(0.05 * np.sqrt(60 / 1380))
+
+
+def test_band_for_window_matches_daily_rule():
+    assert H.band_for_window("1d", 20) == pytest.approx(0.05)
+    assert H.band_for_window("1h", 40) == pytest.approx(0.05 * np.sqrt(40 * 60 / (20 * 1380)))
+
+
+def test_hmm_report_runs_and_is_causal():
+    rng = np.random.default_rng(2)
+    r = np.r_[rng.normal(4, 30, 1500), rng.normal(-4, 30, 1500), rng.normal(0, 30, 1500)]
+    mask = np.ones(len(r), bool)
+    rep = H.hmm_report(r, 40, mask, H.HMKConfig(n_starts=2), n_null=2)
+    assert np.allclose(rep["P"].sum(1), 1)
+    assert rep["state_mean_pct"].is_monotonic_increasing
+    st1, _, m = H.hmm_states(r, 40, mask, H.HMKConfig(n_starts=1))
+    r2 = r.copy(); r2[3000:] = 0
+    x1, ok1 = H.rolling_sum_bp(r, 40); x2, ok2 = H.rolling_sum_bp(r2, 40)
+    W = np.ones((len(r), 1))
+    a1, _ = H.filter_run(m, np.where(ok1, x1, 0), ok1, W); a2, _ = H.filter_run(m, np.where(ok2, x2, 0), ok2, W)
+    assert np.allclose(a1[:3000], a2[:3000])

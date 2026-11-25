@@ -7,6 +7,7 @@ Protocol: [`HMK 002`](../../discussions/MNQ_Hierarchical_Markov/002_claude_hmk01
 | Notebook | Content | Output |
 |---|---|---|
 | `01_transition_matrices` | 20-bar sum, ±5% (intraday also √time-scaled ±1.04% / ±0.52%); counts, P, persistence vs shuffled returns and non-overlapping blocks, P^2/3/5/20, stationary distribution, run lengths, next-bar up share by state; 2020-01 – 2023-06 and halves | `01/` |
+| `02_longer_windows` | 1 h on 40 / 60 bars, 15 m on 60 / 80 bars (daily 20 / ±5% reference); (a) set √time-scaled bands, (b) 3-state HMM on the window return (state means = expected bull / bear returns); same matrices and references as 01 ([`004`](../../discussions/MNQ_Hierarchical_Markov/004_claude_hmk02_longer_windows.md)) | `02/` |
 
 **Data.** MNQ `ohlcv-1m` already on disk; nothing from 2023-07 onwards or 2026 is read.
 
