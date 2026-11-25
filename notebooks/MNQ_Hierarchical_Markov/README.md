@@ -16,4 +16,4 @@ Protocol: [`HMK 002`](../../discussions/MNQ_Hierarchical_Markov/002_claude_hmk01
 
 **Record.** `withdrawn_hmk001/`: Iván's run `85560a6` of the superseded HMK 001 notebook and its outputs, unchanged (summary in HMK 002 §7). It will not rerun as is: it expects to sit one folder higher.
 
-Status: code ready, not run.
+**Result HMK 01 (run `6bb2ce5`, readout [`003`](../../discussions/MNQ_Hierarchical_Markov/003_claude_hmk01_readout.md)).** The matrices' persistence equals what shuffled returns give under the same 20-bar rule; only sideways (calm) persists beyond it; next-bar up share is the base rate in every state, on every tier.
