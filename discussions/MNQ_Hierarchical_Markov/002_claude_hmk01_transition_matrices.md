@@ -6,7 +6,7 @@
 | **Date** | 2026-11-26 |
 | **Branch** | MNQ_Hierarchical_Markov |
 | **Responds to** | Iván, 2026-11-26: first discover the daily-return Markov probability matrix and how persistent it is, then the 1 h and 15 m matrices, with the video's rules (last 20 bars). No trading backtest |
-| **Supersedes** | HMK 001 (hierarchical HMM + trading gates), withdrawn before any run; its notebook was removed. The engine code stays in `hmk.py` for a later study if Iván asks for it |
+| **Supersedes** | HMK 001 (hierarchical HMM + trading gates) as the branch's first study. Iván had already run it (`85560a6`); that run is kept unchanged in `notebooks/MNQ_Hierarchical_Markov/withdrawn_hmk001/` for the record (see §7). The engine stays in `hmk.py` |
 | **Engine** | `src/equity_trading/hmk.py` 0.1.0 (`rolling_states`, `transition_counts`, `chain_report`); tests `tests/test_hmk.py` |
 | **Status** | Descriptive only: no gates, no verdict, no costs |
 
@@ -52,3 +52,13 @@ Outputs in `01/`: `01_summary.csv`, `01_matrices.csv`, `01_matrices.png`, `01_ru
 ## 6. Next
 
 After the readout: Iván decides the next step (e.g. an HMM to replace the ±5% thresholds, or conditioning the 1 h matrix on the daily state).
+
+## 7. Record: the HMK 001 run (`85560a6`), not part of this study
+
+Kept in `withdrawn_hmk001/` (notebook and outputs as committed). Discovery 2021-01 – 2023-06, 1 h primary:
+- **G1 passes:** conditioning on the daily HMM improves the 1 h predictive log score (+0.47 per day, p < 0.001); same for 15 m. The gain is in the density (volatility), not in direction.
+- **G2 fails:** Brier skill −0.25% (P(up) worse than the training up-share); hit 51.5% vs 51.7% up bars.
+- **G3 fails:** always-in sign(E[r]) nets +0.9 ticks/day (p 0.49) against +21.3 for always long.
+- Verdicts: 1 h and 15 m `H3` `CONDITIONING_ONLY`; `U` and `RULE` `NO_EDGE`.
+
+HMK 01 above is a new, descriptive study; the 2021-01 – 2023-06 window it uses has also been seen by this run.

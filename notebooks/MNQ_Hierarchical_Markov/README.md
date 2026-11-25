@@ -12,6 +12,8 @@ Protocol: [`HMK 002`](../../discussions/MNQ_Hierarchical_Markov/002_claude_hmk01
 
 **Run.** `python -m pytest -q tests/test_hmk.py`, then run `01` (a few minutes). Smoke run: `HMK_SYNTHETIC=1` (random walk; shows the rule's built-in persistence).
 
-**Code.** `src/equity_trading/hmk.py`. The hierarchical HMM engine from HMK 001 is kept there but unused.
+**Code.** `src/equity_trading/hmk.py`. The hierarchical HMM engine from HMK 001 is kept there.
+
+**Record.** `withdrawn_hmk001/`: Iván's run `85560a6` of the superseded HMK 001 notebook and its outputs, unchanged (summary in HMK 002 §7). It will not rerun as is: it expects to sit one folder higher.
 
 Status: code ready, not run.
