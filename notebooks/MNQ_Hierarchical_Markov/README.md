@@ -21,3 +21,5 @@ Protocol: [`HMK 002`](../../discussions/MNQ_Hierarchical_Markov/002_claude_hmk01
 **Result HMK 01 (run `6bb2ce5`, readout [`003`](../../discussions/MNQ_Hierarchical_Markov/003_claude_hmk01_readout.md)).** The matrices' persistence equals what shuffled returns give under the same 20-bar rule; only sideways (calm) persists beyond it; next-bar up share is the base rate in every state, on every tier.
 
 **Result HMK 02 (run `c50a7b9`, readout [`005`](../../discussions/MNQ_Hierarchical_Markov/005_claude_hmk02_readout.md)).** Longer windows and the HMM raise persistence to 0.90–0.98, all of it matched by shuffled returns for bull/bear; next-bar up share stays within ~1 pp of the base rate in every state.
+
+**Result HMK 03 (run `70084c7`, readout [`007`](../../discussions/MNQ_Hierarchical_Markov/007_claude_hmk03_readout.md)).** The daily state is not independent of the 1 h and 15 m states or transitions (beyond shuffled returns in all 8 cases); mostly a volatility effect (daily bear = turbulent intraday, daily bull = calm) with a smaller directional tilt. 15 m \| 1 h dependence (band) is the window overlap.

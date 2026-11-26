@@ -10,5 +10,6 @@ Price-only Markov regimes on MNQ across timeframes: daily → 1 hour → 15 minu
 | `004_claude_hmk02_longer_windows.md` | HMK 02 (descriptive): 1 h W = 40 / 60, 15 m W = 60 / 80; set √time-scaled bands (±1.47 / 1.81%, ±0.90 / 1.04%) vs a 3-state HMM on the window return; same matrices and persistence references as HMK 01 |
 | `005_claude_hmk02_readout.md` | HMK 02 (c50a7b9): HMM levels 1 h ≈ ±2.3–3.2%, 15 m bear = high-vol state; diagonals 0.90–0.98 = shuffled reference; non-overlapping bull → bull ≤ share; next-bar up share within ~1 pp of the base rate in every state |
 | `006_claude_hmk03_tier_independence.md` | HMK 03 (descriptive): are the tiers independent? MI of child and parent states and conditional MI of the child's transitions given the parent (15m \| 1d, 1h \| 1d, 15m \| 1h), 8 cases (band / HMM × windows); circular-shift and shuffled-return references |
+| `007_claude_hmk03_readout.md` | HMK 03 (70084c7): tiers not independent; 15m \| 1d and 1h \| 1d beyond shuffled returns in all 8 cases (states and transitions), 15m \| 1h (band) = window overlap; daily bear → turbulent intraday (both extremes up, sideways 37% vs 59%), daily bull → calm intraday, fewer bear windows |
 
-Next turn: `007`.
+Next turn: `008`.
