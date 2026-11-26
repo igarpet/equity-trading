@@ -144,3 +144,28 @@ def test_hmm_report_runs_and_is_causal():
     W = np.ones((len(r), 1))
     a1, _ = H.filter_run(m, np.where(ok1, x1, 0), ok1, W); a2, _ = H.filter_run(m, np.where(ok2, x2, 0), ok2, W)
     assert np.allclose(a1[:3000], a2[:3000])
+
+
+def test_tier_dependence_on_random_walk(tmp_path):
+    """iid returns: the tiers look dependent against a circular shift (shared returns), but no more than the
+    shuffled-within-slot reference."""
+    H.write_synthetic(tmp_path, D(2019, 11, 1), D(2020, 9, 30), effect=0.0)
+    bars = H.session_bars(MB.load_1m("MNQ", D(2019, 11, 1), D(2020, 10, 1)))
+    T = H.tiers_from_15m(bars)
+    r15 = T["q"].ret_bp.to_numpy(float)
+    R = H.tier_returns_from(r15, T)
+    assert np.allclose(np.nan_to_num(R["1h"]), np.nan_to_num(bars["1h"].ret_bp.to_numpy(float)))
+    a = D(2020, 1, 1)
+    masks = {"15m": (pd.Series(T["q"].trade_date).dt.date >= a).to_numpy(),
+             "1h": np.array([d >= a for d in T["hour_dates"]]), "1d": np.array([d >= a for d in T["day_dates"]])}
+    specs = {"1d": H.TierSpec("1d", 20, "band", 0.05), "1h": H.TierSpec("1h", 40, "band", H.band_for_window("1h", 40)),
+             "15m": H.TierSpec("15m", 80, "band", H.band_for_window("15m", 80))}
+    real = H.dependence(r15, T, specs, masks)
+    rng = np.random.default_rng(0)
+    sh = [H.dependence(H.shuffle_within_slot(r15, T["q"].slot.to_numpy(), rng), T, specs, masks)["15m|1h"]["mi"]
+          for _ in range(20)]
+    cs = H.circular_shift_null(r15, T, specs, masks, 20, rng)["15m|1h"]["mi"]
+    assert real["15m|1h"]["mi"] > np.max(cs)                       # 'dependent' by shared returns
+    assert np.mean(np.array(sh) >= real["15m|1h"]["mi"]) > 0.05     # but not beyond the shuffled reference
+    P = H.cond_tables(real["15m|1d"]["counts"])
+    assert np.allclose(P.sum(1), 1)

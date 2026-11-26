@@ -820,3 +820,174 @@ def tier_returns(bars: dict, tier: str, a: dt.date, b: dt.date) -> pd.DataFrame:
     """Bar returns of one tier in [a, b] (CME trade dates), every bar of the session in time order."""
     x = in_window(bars[tier], a, b).copy()
     return x[["trade_date", "k", "ts", "close", "ret_bp", "obs"]].reset_index(drop=True)
+
+
+# ----------------------------------------------------------------------------- HMK 03: are the tiers independent?
+def tiers_from_15m(bars: dict) -> dict:
+    """15m, 1h and daily return series all built from the same 15m bar returns (log returns add up), so a shuffle
+    of the 15m returns can be carried to every tier. Index maps: 15m row -> its hour row and its day row."""
+    q = bars["15m"][["trade_date", "k", "ret_bp"]].reset_index(drop=True).copy()
+    q["slot"] = q.k
+    q["hour"] = q.k // 4
+    hk = q.groupby(["trade_date", "hour"], sort=True).ngroup().to_numpy()
+    dk = q.groupby("trade_date", sort=True).ngroup().to_numpy()
+    return {"q": q, "hour_row": hk, "day_row": dk, "n_hours": int(hk.max()) + 1, "n_days": int(dk.max()) + 1,
+            "day_dates": pd.to_datetime(q.groupby("trade_date", sort=True).size().index).date,
+            "hour_dates": pd.to_datetime(q.groupby(["trade_date", "hour"], sort=True).size().index
+                                         .get_level_values(0)).date}
+
+
+def _agg(r: np.ndarray, rows: np.ndarray, n: int) -> np.ndarray:
+    """Sum of 15m returns per hour / day row; NaN if any 15m return in it is NaN (roll)."""
+    s = np.bincount(rows, weights=np.nan_to_num(r), minlength=n)
+    bad = np.bincount(rows, weights=~np.isfinite(r), minlength=n) > 0
+    s[bad] = np.nan
+    return s
+
+
+def tier_returns_from(r15: np.ndarray, T: dict) -> dict:
+    return {"15m": r15, "1h": _agg(r15, T["hour_row"], T["n_hours"]), "1d": _agg(r15, T["day_row"], T["n_days"])}
+
+
+def shuffle_within_slot(r15: np.ndarray, slot: np.ndarray, rng) -> np.ndarray:
+    """Permute 15m returns across days within each time-of-day slot (keeps the intraday volatility profile,
+    destroys serial dependence and volatility clustering)."""
+    out = r15.copy()
+    for s in np.unique(slot):
+        i = np.flatnonzero((slot == s) & np.isfinite(r15))
+        out[i] = r15[rng.permutation(i)]
+    return out
+
+
+def hmm_classify(m: CondHMM, ret_bp: np.ndarray, window: int, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """States of a FIXED fitted HMM on the window return (causal filtered argmax)."""
+    x, ok = rolling_sum_bp(ret_bp, window)
+    ok = ok & mask
+    W = np.ones((len(x), 1))
+    alpha, _ = filter_run(m, np.where(ok, x, 0.0), ok, W)
+    return alpha.argmax(1).astype(np.int64), ok
+
+
+def mutual_info(x: np.ndarray, y: np.ndarray, ok: np.ndarray, kx: int = 3, ky: int = 3) -> tuple[float, np.ndarray]:
+    """I(X; Y) in nats from the joint counts over rows ``ok``; returns (MI, counts)."""
+    C = np.zeros((kx, ky))
+    np.add.at(C, (x[ok], y[ok]), 1)
+    n = C.sum()
+    if n == 0:
+        return float("nan"), C
+    P = C / n
+    px, py = P.sum(1, keepdims=True), P.sum(0, keepdims=True)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = np.where(P > 0, P * np.log(P / (px * py)), 0.0)
+    return float(t.sum()), C
+
+
+def cond_mutual_info(nxt: np.ndarray, cur: np.ndarray, par: np.ndarray, ok: np.ndarray) -> tuple[float, np.ndarray]:
+    """I(S_{t+1}; Parent | S_t) in nats: does the parent change the child's transition matrix?
+    Returns (CMI, counts[parent, cur, nxt])."""
+    C = np.zeros((3, 3, 3))
+    np.add.at(C, (par[ok], cur[ok], nxt[ok]), 1)
+    n = C.sum()
+    tot = 0.0
+    for i in range(3):
+        Ci = C[:, i, :]
+        ni = Ci.sum()
+        if ni == 0:
+            continue
+        P = Ci / ni
+        pp, pn = P.sum(1, keepdims=True), P.sum(0, keepdims=True)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            t = np.where(P > 0, P * np.log(P / (pp * pn)), 0.0)
+        tot += ni / n * float(t.sum())
+    return tot, C
+
+
+@dataclass
+class TierSpec:
+    """How the states of one tier are made: 'band' (set +-band on the W-bar return) or 'hmm' (fitted model)."""
+    tier: str
+    window: int
+    method: str = "band"
+    band: float | None = None
+    model: CondHMM | None = None
+
+    def states(self, ret_bp: np.ndarray, mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        if self.method == "band":
+            st, ok = rolling_states(ret_bp, self.window, self.band)
+            return st, ok & mask
+        return hmm_classify(self.model, ret_bp, self.window, mask)
+
+
+def parent_of(child_rows_parent: np.ndarray, parent_states: np.ndarray, parent_ok: np.ndarray):
+    """Parent state LAST COMPLETED before the child bar: parent row index - 1 (causal)."""
+    j = child_rows_parent - 1
+    ok = j >= 0
+    js = np.where(ok, j, 0)
+    return parent_states[js], ok & parent_ok[js]
+
+
+def dependence(r15: np.ndarray, T: dict, specs: dict, masks: dict) -> dict:
+    """All dependence statistics for one realization of the 15m returns.
+
+    Pairs (child | parent), parent = last completed parent bar:
+      15m | 1d, 1h | 1d, 15m | 1h : marginal MI and P(child state | parent state);
+      transitions: I(15m_{t+1}; 1d | 15m_t), I(15m_{t+1}; 1h | 15m_t), I(1h_{t+1}; 1d | 1h_t)."""
+    R = tier_returns_from(r15, T)
+    S = {t: specs[t].states(R[t], masks[t]) for t in ("1d", "1h", "15m")}
+    hour_of_q, day_of_q = T["hour_row"], T["day_row"]
+    # day row of each hour row
+    day_of_h = np.zeros(T["n_hours"], np.int64)
+    day_of_h[hour_of_q] = day_of_q
+    links = {"15m|1d": ("15m", "1d", day_of_q), "1h|1d": ("1h", "1d", day_of_h), "15m|1h": ("15m", "1h", hour_of_q)}
+    out = {}
+    for name, (c, p, rows) in links.items():
+        cs, cok = S[c]
+        ps, pok = parent_of(rows, *S[p])
+        ok = cok & pok
+        mi, C = mutual_info(cs, ps, ok)
+        # transition of the child, conditioned on the parent of bar t+1 (known at the close of t)
+        nxt, cur = cs[1:], cs[:-1]
+        okt = ok[1:] & cok[:-1]
+        cmi, C3 = cond_mutual_info(nxt, cur, ps[1:], okt)
+        out[name] = {"mi": mi, "counts": C, "cmi": cmi, "counts3": C3, "n": int(ok.sum())}
+    return out
+
+
+def circular_shift_null(r15: np.ndarray, T: dict, specs: dict, masks: dict, n: int, rng, min_days: int = 60) -> dict:
+    """Null 1 (any dependence at all): shift the parent's state series by a random whole number of days
+    (>= min_days), keeping both tiers' own persistence and time of day."""
+    R = tier_returns_from(r15, T)
+    S = {t: specs[t].states(R[t], masks[t]) for t in ("1d", "1h", "15m")}
+    hour_of_q, day_of_q = T["hour_row"], T["day_row"]
+    day_of_h = np.zeros(T["n_hours"], np.int64); day_of_h[hour_of_q] = day_of_q
+    links = {"15m|1d": ("15m", "1d", day_of_q, 1), "1h|1d": ("1h", "1d", day_of_h, 1),
+             "15m|1h": ("15m", "1h", hour_of_q, 23)}
+    res = {k: {"mi": [], "cmi": []} for k in links}
+    for _ in range(n):
+        for name, (c, p, rows, per_day) in links.items():
+            ps, pok = S[p]
+            L = len(ps)
+            k = int(rng.integers(min_days, max(min_days + 1, L // per_day - min_days))) * per_day
+            ps2, pok2 = np.roll(ps, k), np.roll(pok, k)
+            cs, cok = S[c]
+            pp, ppok = parent_of(rows, ps2, pok2)
+            ok = cok & ppok
+            res[name]["mi"].append(mutual_info(cs, pp, ok)[0])
+            okt = ok[1:] & cok[:-1]
+            res[name]["cmi"].append(cond_mutual_info(cs[1:], cs[:-1], pp[1:], okt)[0])
+    return res
+
+
+def cond_tables(C: np.ndarray) -> pd.DataFrame:
+    """P(child state | parent state) from counts[child, parent], long format."""
+    P = C / C.sum(0, keepdims=True)
+    return pd.DataFrame(P.T, index=[f"parent {s}" for s in STATE_NAMES], columns=STATE_NAMES)
+
+
+def cond_transitions(C3: np.ndarray) -> dict:
+    """P(child_{t+1} | child_t, parent) per parent state, plus pooled over parents."""
+    out = {}
+    for g, name in enumerate(STATE_NAMES):
+        out[f"parent {name}"] = pd.DataFrame(to_probs(C3[g]), index=STATE_NAMES, columns=STATE_NAMES)
+    out["pooled"] = pd.DataFrame(to_probs(C3.sum(0)), index=STATE_NAMES, columns=STATE_NAMES)
+    return out
